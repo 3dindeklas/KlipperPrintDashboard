@@ -151,7 +151,7 @@
   document.getElementById('addPrinter').addEventListener('click', () => {
     const container = document.getElementById('printerSettings');
     const count = container.childElementCount + 1;
-    const printer = { id: newId(), name: `Printer ${count}`, host: window.location.hostname || 'localhost', port: 7125, color: '#4c325b' };
+    const printer = { id: newId(), name: `Printer ${count}`, host: window.location.hostname || 'localhost', port: 7124 + count, color: '#4c325b' };
     const current = settingsFromForm();
     localStorage.setItem(CONFIG_KEY, JSON.stringify([...current, printer]));
     renderSettings();
