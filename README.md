@@ -15,7 +15,7 @@ De letterkeuze is een groot raster met A tot en met Z. De knoppen zijn geschikt 
 
 Open de dashboard-URL in Safari op de iPad. Tik op **Deel** en kies **Zet op beginscherm**. Start het dashboard daarna via het beginscherm. De instellingen en beheercode blijven bewaard in Safari op die iPad.
 
-Het dashboard gebruikt de Quicksand-letterstijl en een warme papierkleur met turquoise accenten, in lijn met de 3Dindeklas-materialen. Als Quicksand niet geladen kan worden, gebruikt de pagina een lokale schreefloze fallback.
+Het dashboard volgt de header en layout van [LayerBeacon](https://3dindeklas.github.io/LayerBeacon/): het 3Dindeklas-logo, “LEREN DOOR CREËREN”, Quicksand, pruimkleur en gele accentlijn. Het logo en de lettertypebestanden staan lokaal in de repository, zodat de vormgeving ook zonder externe fontdienst werkt.
 
 ## Zonder printers testen
 
@@ -31,7 +31,7 @@ Op GitHub Pages staat de demomodus altijd aan. Daardoor kan de publieke demo noo
 
 ## Printeradressen beheren
 
-Open `admin.html` of tik op **Beheer** onder aan het dashboard. Stel bij het eerste gebruik een beheercode van 4 tot 8 cijfers in. Vul per printer het IP-adres of de netwerknaam en de Moonraker-poort in. De standaardpoorten zijn `7125`, `7126`, `7127` en `7128`.
+Open `admin.html` of tik op **Printerbeheer** onder aan het dashboard. Stel bij het eerste gebruik een beheercode van 4 tot 8 cijfers in. In Printerbeheer kun je printers toevoegen en verwijderen, printernamen aanpassen en per printer het IP-adres of de netwerknaam, de Moonraker-poort en de randkleur van de printerkaart instellen. De standaardpoorten zijn `7125`, `7126`, `7127` en `7128`. Sla de wijzigingen op om de nieuwe printerlijst op het dashboard te tonen.
 
 De instellingen worden lokaal in de browser opgeslagen. Ze gelden dus alleen voor die iPad/browser en worden niet naar de printerhost of andere apparaten gekopieerd. Stel de printeradressen in voordat deelnemers de iPad gebruiken.
 
@@ -81,7 +81,8 @@ Gebruik GitHub Pages alleen om de nepdata te bekijken. Voor echte printers gebru
 | --- | --- |
 | `index.html`, `app.js` | Deelnemersscherm, printerstatus en letterkeuze |
 | `styles.css` | Huisstijl en mobiele/iPad-weergave |
-| `admin.html`, `admin.js` | Beheer van printer-IP’s en poorten |
+| `admin.html`, `admin.js` | Printers toevoegen/verwijderen en namen, IP’s, poorten en randkleuren beheren |
+| `assets/` | 3Dindeklas-logo, Quicksand-lettertypen en fontlicentie |
 | `manifest.json` | Instellingen voor gebruik als webapp |
 | `compose.yaml` | Nginx-webserver naast Klipper in Docker |
 | `.github/workflows/deploy-pages.yml` | Publiceren van de GitHub Pages-demo |
