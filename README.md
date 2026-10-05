@@ -1,34 +1,45 @@
 # Klipper Print Dashboard
 
-Een eenvoudig printdashboard voor een iPad of ander apparaat op hetzelfde lokale netwerk als de printers. Bezoekers zien welke printer vrij is, kiezen een letter en starten daarmee het bijbehorende G-codebestand via Moonraker.
+Een iPad-vriendelijk dashboard voor workshops met meerdere Klipper/Moonraker-printers. Deelnemers kiezen een vrije printer, tikken op hun letter en zien een voorbeeld van de 3D-geprinte letter voordat de print start.
 
-## Wat kan het dashboard?
+## Deelnemers gebruiken het dashboard
 
-- Toont vier printers met de namen en kleuren Zwart, Wit, Paars en Printer 4.
-- Leest de status en printvoortgang via Moonraker.
-- Laat alleen bij een vrije printer de knop **Start print** zien als actieve knop.
-- Vraagt daarna om een letter en start het bestand met die letter, bijvoorbeeld `A.gcode`.
-- Controleert de printerstatus opnieuw vlak voor het starten.
-- Vangt verbindingsfouten en een trage Moonraker-verbinding op.
-- Heeft een ingebouwde demomodus die zonder printers werkt en geen requests naar Moonraker verstuurt.
+1. Tik op de printerkleur die bij het handvat past en waar **Klaar om te printen** staat.
+2. Tik in het lettervenster op de gewenste letter. Het grote voorbeeld laat de fysieke, 3D-geprinte letter zien.
+3. Tik op **Print mijn letter**.
+4. Haal de letter van het printbed wanneer de printer klaar is.
 
-## De demo testen
+De letterkeuze is een groot raster met A tot en met Z. De knoppen zijn geschikt voor aanraken op een iPad. De printerstatus wordt elke vijf seconden bijgewerkt; vlak voor een live print controleert het dashboard nogmaals of de printer vrij is.
 
-Open het dashboard met `?demo=1` achter de URL. Bijvoorbeeld lokaal:
+## iPad als app gebruiken
+
+Open de dashboard-URL in Safari op de iPad. Tik op **Deel** en kies **Zet op beginscherm**. Start het dashboard daarna via het beginscherm. De instellingen en beheercode blijven bewaard in Safari op die iPad.
+
+Het dashboard gebruikt de Quicksand-letterstijl en een warme papierkleur met turquoise accenten, in lijn met de 3Dindeklas-materialen. Als Quicksand niet geladen kan worden, gebruikt de pagina een lokale schreefloze fallback.
+
+## Zonder printers testen
+
+Voeg `?demo=1` toe aan het dashboardadres, bijvoorbeeld:
 
 ```text
-http://localhost:8080/?demo=1
+http://192.168.1.20:8080/?demo=1
 ```
 
-In de demo zie je verschillende voorbeeldsituaties: een vrije printer, een printer die print, een gepauzeerde printer en een foutmelding. Kies **Zwart** om een testprint te starten. De voortgang loopt vanzelf op. De demo verstuurt geen netwerkverzoeken en stuurt dus nooit een echte printer aan.
+De demo toont een printer die klaar is, een printer die print, een gepauzeerde printer en een printer met een melding. Op de vrije printer kun je een gesimuleerde print starten en de voortgang zien. In demomodus doet de pagina geen verzoeken naar Moonraker.
 
-Op GitHub Pages start het dashboard altijd in demomodus. Zo kan de publieke demo nooit per ongeluk printers proberen te benaderen.
+Op GitHub Pages staat de demomodus altijd aan. Daardoor kan de publieke demo nooit een echte printer aansturen.
+
+## Printeradressen beheren
+
+Open `admin.html` of tik op **Beheer** onder aan het dashboard. Stel bij het eerste gebruik een beheercode van 4 tot 8 cijfers in. Vul per printer het IP-adres of de netwerknaam en de Moonraker-poort in. De standaardpoorten zijn `7125`, `7126`, `7127` en `7128`.
+
+De instellingen worden lokaal in de browser opgeslagen. Ze gelden dus alleen voor die iPad/browser en worden niet naar de printerhost of andere apparaten gekopieerd. Stel de printeradressen in voordat deelnemers de iPad gebruiken.
+
+De beheercode voorkomt dat deelnemers de beheerpagina per ongeluk openen. De code is geen serverbeveiliging: iemand met technische toegang tot de iPad kan lokale browserinstellingen aanpassen.
 
 ## Installeren naast Klipper in Docker
 
-### Eenmalig installeren met Docker Compose
-
-Voer dit uit op de Raspberry Pi of andere Docker-host waar Klipper en Moonraker draaien. De repo bevat al een `compose.yaml` voor de webserver.
+Voer dit uit op de Raspberry Pi of andere Docker-host waar Klipper en Moonraker draaien:
 
 ```bash
 git clone https://github.com/3dindeklas/KlipperPrintDashboard.git
@@ -36,45 +47,13 @@ cd KlipperPrintDashboard
 docker compose up -d
 ```
 
-Open daarna op de iPad:
+Open op de iPad `http://<IP-ADRES-VAN-DE-DOCKER-HOST>:8080`. Test zonder printers met `http://<IP-ADRES-VAN-DE-DOCKER-HOST>:8080/?demo=1`.
 
-```text
-http://<IP-ADRES-VAN-DE-DOCKER-HOST>:8080
-```
+De Nginx-container serveert alleen de statische bestanden op poort `8080`. De browser van de iPad verbindt rechtstreeks met het IP-adres en de poort van elke printer. Je kunt die adressen later via de beheerpagina instellen.
 
-Voor testen zonder printers open je:
+### Moonraker voor live gebruik
 
-```text
-http://<IP-ADRES-VAN-DE-DOCKER-HOST>:8080/?demo=1
-```
-
-De container serveert alleen de statische dashboardbestanden op poort `8080`. Moonraker-verzoeken gaan vanuit de browser rechtstreeks naar poorten `7125` tot en met `7128` op hetzelfde IP-adres. Zorg dat die Moonraker-poorten vanaf de iPad bereikbaar zijn.
-
-### Installeren met één Docker-commando
-
-Als je de repo al hebt gedownload, ga dan eerst in de map `KlipperPrintDashboard` staan en voer uit:
-
-```bash
-docker run -d \
-  --name klipper-print-dashboard \
-  --restart unless-stopped \
-  -p 8080:80 \
-  -v "$PWD:/usr/share/nginx/html:ro" \
-  nginx:alpine
-```
-
-Controleer de container met:
-
-```bash
-docker ps --filter name=klipper-print-dashboard
-docker logs klipper-print-dashboard
-```
-
-Werk de bestanden later bij met `git pull` in de repo-map; de nginx-container serveert de bijgewerkte bestanden direct. Om de container te verwijderen: `docker rm -f klipper-print-dashboard`.
-
-### Moonraker instellen voor live gebruik
-
-De browser laadt het dashboard vanaf bijvoorbeeld `http://192.168.1.20:8080` en vraagt daarna de printers op via `http://192.168.1.20:7125` tot en met `:7128`. Omdat dit verschillende origins zijn, moet Moonraker deze dashboard-origin toestaan. Voeg de exacte URL van het dashboard toe aan `cors_domains` in de `moonraker.conf` van **elke printer**. Neem de juiste sectie op of voeg de waarden toe aan een bestaande `[authorization]`-sectie:
+Omdat de dashboard-URL en Moonraker verschillende poorten gebruiken, moet de exacte dashboard-origin in `cors_domains` staan in `moonraker.conf` van iedere printer. Neem de waarden op in de bestaande `[authorization]`-sectie; maak geen dubbele sectie:
 
 ```ini
 [authorization]
@@ -84,39 +63,37 @@ trusted_clients:
   192.168.1.42
 ```
 
-Vervang `192.168.1.20` door het IP-adres van de Docker-host en `192.168.1.42` door het vaste IP-adres van de iPad. Voeg geen tweede `[authorization]`-sectie toe als die al bestaat. Herstart Moonraker na het aanpassen van de configuratie. Herhaal dit voor alle vier printers.
-
-`trusted_clients` geeft het opgegeven apparaat brede toegang tot de Moonraker-API. Beperk dit daarom tot de iPad die het dashboard gebruikt en houd de printers op een vertrouwd lokaal netwerk. Gebruik geen `*` als CORS-domein. Stel de Moonraker-poorten niet open naar het internet.
-
-De vier standaard Moonraker-poorten staan in `index.html`: `7125`, `7126`, `7127` en `7128`. Pas die daar aan als jouw installatie andere poorten gebruikt.
+Vervang `192.168.1.20` door het IP-adres van de Docker-host en `192.168.1.42` door het vaste IP-adres van de iPad. Herstart Moonraker na een configuratiewijziging. Voeg de exacte dashboard-URL toe en gebruik geen wildcard. Houd Moonraker en de printers op een vertrouwd lokaal netwerk; stel de printerpoorten niet open naar het internet.
 
 ## GitHub Pages-demo
 
-De workflow in `.github/workflows/deploy-pages.yml` kan de demo als statische website publiceren. De website draait standaard in demomodus en praat dan niet met printers.
+De workflow `.github/workflows/deploy-pages.yml` kan de demo als statische website publiceren. Na het mergen van de workflow:
 
-1. Merge de workflow naar `main`.
-2. Open in GitHub **Settings → Pages**.
-3. Kies bij **Build and deployment** als source **GitHub Actions**.
-4. De workflow publiceert de demo bij de volgende push naar `main` (of via **Actions → Deploy demo to GitHub Pages → Run workflow**).
+1. Open in GitHub **Settings → Pages**.
+2. Kies bij **Build and deployment** als bron **GitHub Actions**.
+3. De volgende push naar `main` publiceert de demo. Je kunt de workflow ook handmatig starten via **Actions → Deploy demo to GitHub Pages → Run workflow**.
 
-GitHub Pages is bedoeld om de nepdata te bekijken. Gebruik de Docker-installatie op het lokale netwerk voor echte printers.
+Gebruik GitHub Pages alleen om de nepdata te bekijken. Voor echte printers gebruik je de Docker-installatie op het lokale netwerk.
 
-## Bestanden in de repo
+## Bestanden
 
 | Bestand | Doel |
 | --- | --- |
-| `index.html` | Dashboard, live printerstatus en demomodus |
-| `manifest.json` | Basisinstellingen voor toevoegen aan beginscherm |
-| `compose.yaml` | Statische webserver voor de Docker-installatie |
-| `.github/workflows/deploy-pages.yml` | Publiceert de demo via GitHub Pages |
+| `index.html`, `app.js` | Deelnemersscherm, printerstatus en letterkeuze |
+| `styles.css` | Huisstijl en mobiele/iPad-weergave |
+| `admin.html`, `admin.js` | Beheer van printer-IP’s en poorten |
+| `manifest.json` | Instellingen voor gebruik als webapp |
+| `compose.yaml` | Nginx-webserver naast Klipper in Docker |
+| `.github/workflows/deploy-pages.yml` | Publiceren van de GitHub Pages-demo |
 
-## Veelvoorkomende problemen
+## Problemen oplossen
 
-- **Alle printers zijn niet bereikbaar:** controleer of de iPad en de printerhost op hetzelfde netwerk zitten en of poorten `7125`–`7128` vanaf de iPad bereikbaar zijn.
-- **Moonraker geeft een CORS-fout:** controleer of `cors_domains` exact overeenkomt met de dashboard-URL, inclusief `http://` en `:8080`, en herstart Moonraker.
-- **De knop blijft uitgeschakeld:** de printer moet `standby`, `complete` of `cancelled` melden. Bij `printing`, `paused`, een fout of een verbindingsprobleem kan er niet gestart worden.
-- **Printstart mislukt:** controleer of het bestand met de hoofdletter op de printer staat, bijvoorbeeld `A.gcode` in de door Moonraker ingestelde G-code-map.
+- **Printer niet bereikbaar:** controleer of de iPad en printer op hetzelfde lokale netwerk zitten en of het ingestelde IP-adres en de poort kloppen.
+- **CORS-fout:** controleer of `cors_domains` exact de dashboard-origin bevat, inclusief `http://` en `:8080`; herstart Moonraker daarna.
+- **Startknop blijft uit:** alleen `standby`, `complete` en `cancelled` gelden als vrije printerstatus.
+- **Printbestand niet gevonden:** controleer of het bestand met hoofdletter in de G-code-map van die printer staat, bijvoorbeeld `A.gcode`.
+- **Verkeerde beheerinstellingen:** open **Beheer**, voer de code in en pas de adressen aan. **Herstel standaardadressen** zet de poorten en standaardhost terug.
 
-## Technische werking
+## Moonraker API
 
-Het dashboard vraagt elke vijf seconden `print_stats` en `virtual_sdcard` op via `/printer/objects/query`. Voor het starten controleert het de status opnieuw en stuurt daarna `POST /printer/print/start` met een vaste bestandsnaam zoals `A.gcode`.
+Het dashboard leest `/printer/objects/query?print_stats&virtual_sdcard` uit en start een gekozen bestand met `POST /printer/print/start`, bijvoorbeeld `A.gcode`.
