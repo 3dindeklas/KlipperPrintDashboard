@@ -30,10 +30,10 @@
       if (!Array.isArray(saved)) return definitions.map(item => ({ ...item }));
       return saved.filter(item => item && typeof item === 'object').map((item, index) => ({
         id: typeof item.id === 'string' && item.id ? item.id : newId(),
-        name: typeof item.name === 'string' && item.name.trim() ? item.name : `Printer ${index + 1}`,
+        name: typeof item.name === 'string' && item.name.trim() ? item.name : (definitions.find(definition => definition.id === item.id)?.name || `Printer ${index + 1}`),
         host: typeof item.host === 'string' && item.host ? item.host : (window.location.hostname || 'localhost'),
-        port: Number(item.port) || 7125 + index,
-        color: /^#[\da-f]{6}$/i.test(item.color || '') ? item.color : '#4c325b'
+        port: Number(item.port) || definitions.find(definition => definition.id === item.id)?.port || 7125 + index,
+        color: /^#[\da-f]{6}$/i.test(item.color || '') ? item.color : (definitions.find(definition => definition.id === item.id)?.color || '#4c325b')
       }));
     } catch { return definitions.map(item => ({ ...item })); }
   }
