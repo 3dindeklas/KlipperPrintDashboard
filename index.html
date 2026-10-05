@@ -6,19 +6,26 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="3D Print Demo">
-  <meta name="theme-color" content="#5ab3b1">
+  <meta name="theme-color" content="#4c325b">
   <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="styles.css">
+  <link rel="icon" type="image/png" href="assets/logo-3dindeklas.png">
   <title>3D Printer Demo | 3D in de klas</title>
 </head>
 <body>
   <main class="app-shell">
-    <header class="hero panel">
-      <p class="brand">3D <span>in de klas</span></p>
+    <header class="site-header">
+      <div class="header-inner">
+        <a class="brand" href="https://www.3dindeklas.nl/" aria-label="Naar 3dindeklas.nl"><img src="assets/logo-3dindeklas.png" width="62" height="72" alt="3dindeklas"></a>
+        <div class="header-title"><span>LEREN DOOR CREËREN</span><strong>Print jouw letter</strong></div>
+        <a class="header-link" id="headerLink" href="#printers">Kies je printer <span aria-hidden="true">↗</span></a>
+      </div>
+    </header>
+    <section class="hero panel">
       <h1>Print jouw letter!</h1>
       <p class="intro-copy">Kies een printer die klaar is. Kies daarna jouw letter en kijk hoe hij wordt gemaakt.</p>
       <span id="modeBadge" class="mode-badge" role="status"></span>
-    </header>
+    </section>
 
     <section class="steps panel" aria-labelledby="steps-title">
       <h2 id="steps-title">Zo werkt het</h2>
@@ -30,7 +37,8 @@
     </section>
 
     <section id="printers" class="printer-grid" aria-label="Kies een printer"></section>
-    <footer class="app-footer"><span>Een idee wordt iets echts.</span><a id="adminLink" href="admin.html">Beheer</a></footer>
+    <p id="noPrinters" class="empty-printers" hidden>Er zijn nog geen printers ingesteld. Vraag een begeleider om printers toe te voegen via <a href="admin.html">Printerbeheer</a>.</p>
+    <footer class="app-footer"><span>Een idee wordt iets echts.</span><a id="adminLink" href="admin.html">Printerbeheer</a></footer>
   </main>
 
   <dialog id="letterDialog" class="letter-dialog" aria-labelledby="letter-title">
