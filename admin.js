@@ -115,7 +115,8 @@
     }
     localStorage.setItem(CONFIG_KEY, JSON.stringify(values));
     saveNotice.textContent = 'Adressen opgeslagen. Het dashboard wordt geopend.';
-    setTimeout(() => { window.location.href = 'index.html'; }, 450);
+    const demoQuery = new URLSearchParams(window.location.search).get('demo') === '1' ? '?demo=1' : '';
+    setTimeout(() => { window.location.href = `index.html${demoQuery}`; }, 450);
   });
 
   document.getElementById('resetEndpoints').addEventListener('click', () => {
