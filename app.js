@@ -42,10 +42,10 @@
       if (!Array.isArray(saved)) return defaultPrinters();
       return saved.filter(item => item && typeof item === 'object').map((item, index) => ({
         id: typeof item.id === 'string' && item.id ? item.id : `printer-${index + 1}`,
-        name: typeof item.name === 'string' && item.name.trim() ? item.name.trim() : `Printer ${index + 1}`,
+        name: typeof item.name === 'string' && item.name.trim() ? item.name.trim() : (printerDefinitions.find(printer => printer.id === item.id)?.name || `Printer ${index + 1}`),
         host: validHost(item.host) ? item.host : (window.location.hostname || 'localhost'),
-        port: validPort(item.port) ? Number(item.port) : 7125 + index,
-        color: /^#[\da-f]{6}$/i.test(item.color || '') ? item.color : '#4c325b'
+        port: validPort(item.port) ? Number(item.port) : (printerDefinitions.find(printer => printer.id === item.id)?.port || 7125 + index),
+        color: /^#[\da-f]{6}$/i.test(item.color || '') ? item.color : (printerDefinitions.find(printer => printer.id === item.id)?.color || '#4c325b')
       }));
     } catch {
       return defaultPrinters();
