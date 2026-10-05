@@ -29,6 +29,8 @@
   let selectedLetter = 'A';
   let polling = false;
 
+  if (demoMode) document.getElementById('adminLink').href = 'admin.html?demo=1';
+
   function defaultPrinters() {
     const host = window.location.hostname || 'localhost';
     return printerDefinitions.map(item => ({ ...item, host, port: item.port }));
