@@ -1,0 +1,9 @@
+services:
+  klipper-print-dashboard:
+    image: nginx:alpine
+    container_name: klipper-print-dashboard
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    volumes:
+      - ./:/usr/share/nginx/html:ro
