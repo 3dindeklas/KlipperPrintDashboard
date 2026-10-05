@@ -1,0 +1,9 @@
+{
+  "name": "3D Printer Demo",
+  "short_name": "Print Demo",
+  "lang": "nl",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f3f5f0",
+  "theme_color": "#5ab3b1"
+}
