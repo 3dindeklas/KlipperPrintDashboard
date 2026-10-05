@@ -37,17 +37,18 @@
   }
 
   function loadPrinters() {
-    const defaults = defaultPrinters();
     try {
       const saved = JSON.parse(localStorage.getItem(CONFIG_KEY) || 'null');
-      if (!Array.isArray(saved)) return defaults;
-      return defaults.map(printer => {
-        const override = saved.find(item => item.id === printer.id);
-        if (!override) return printer;
-        return { ...printer, host: validHost(override.host) ? override.host : printer.host, port: validPort(override.port) ? Number(override.port) : printer.port };
-      });
+      if (!Array.isArray(saved)) return defaultPrinters();
+      return saved.filter(item => item && typeof item === 'object').map((item, index) => ({
+        id: typeof item.id === 'string' && item.id ? item.id : `printer-${index + 1}`,
+        name: typeof item.name === 'string' && item.name.trim() ? item.name.trim() : `Printer ${index + 1}`,
+        host: validHost(item.host) ? item.host : (window.location.hostname || 'localhost'),
+        port: validPort(item.port) ? Number(item.port) : 7125 + index,
+        color: /^#[\da-f]{6}$/i.test(item.color || '') ? item.color : '#4c325b'
+      }));
     } catch {
-      return defaults;
+      return defaultPrinters();
     }
   }
 
@@ -82,6 +83,7 @@
   function renderPrinters() {
     printerGrid.replaceChildren();
     printers.forEach(createCard);
+    document.getElementById('noPrinters').hidden = printers.length > 0;
   }
 
   function stateLabel(state) {
@@ -107,7 +109,7 @@
   }
 
   function fakeStatus(printer) {
-    const fake = fakePrinters[printer.id];
+    const fake = fakePrinters[printer.id] || (fakePrinters[printer.id] = { state: 'standby' });
     if (fake.state === 'printing') {
       const base = fake.baseProgress || 0;
       fake.progress = Math.min(1, base + (1 - base) * (Date.now() - fake.startedAt) / fake.durationMs);
