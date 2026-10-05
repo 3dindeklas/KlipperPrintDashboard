@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="3D Print Demo" />
+  <meta name="theme-color" content="#5ab3b1" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <title>3D Printer Demo</title>
+  <style>
+    :root {
+      font-family: Arial, Helvetica, sans-serif;
+      color: #111;
+      background: #f8f6ed;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 24px; }
+    main { max-width: 1100px; margin: 0 auto; }
+    h1, h2 { text-align: center; }
+    .intro, .steps {
+      background: #fff;
+      border-radius: 18px;
+      padding: 20px;
+      margin-bottom: 24px;
+      box-shadow: 0 8px 24px rgba(0,0,0,.08);
+    }
+    .steps ol { margin-bottom: 0; line-height: 1.6; }
+    .printers {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: 18px;
+    }
+    .printer {
+      background: #fff;
+      border-radius: 18px;
+      padding: 20px;
+      box-shadow: 0 8px 24px rgba(0,0,0,.08);
+      border-top: 10px solid var(--printer-color, #5ab3b1);
+    }
+    .status { font-weight: 700; margin: 8px 0; }
+    .progress { margin: 8px 0 16px; }
+    button, select {
+      font-size: 1rem;
+      border-radius: 12px;
+      padding: 12px 16px;
+    }
+    button {
+      border: 0;
+      background: #5ab3b1;
+      color: #fff;
+      font-weight: 700;
+      width: 100%;
+    }
+    button:disabled { background: #aaa; }
+    dialog {
+      border: 0;
+      border-radius: 18px;
+      padding: 24px;
+      width: min(420px, calc(100% - 32px));
+      box-shadow: 0 20px 60px rgba(0,0,0,.25);
+    }
+    dialog::backdrop { background: rgba(0,0,0,.45); }
+    dialog select { width: 100%; margin: 12px 0 18px; }
+    .dialog-actions { display: flex; gap: 12px; }
+    .dialog-actions button { flex: 1; }
+    .secondary { background: #777; }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="intro">
+      <h1>Start zelf een 3D-print!</h1>
+      <p style="text-align:center">Kies een vrije printer, selecteer een letter en laat de printer het werk doen.</p>
+    </section>
+
+    <section class="steps">
+      <h2>Hoe werkt het?</h2>
+      <ol>
+        <li><strong>Kies een printer:</strong> Zoek een printer met de naam (Zwart, Wit, Paars, etc.) die overeenkomt met het gekleurde handvat. Staat er “Klaar om te printen”? Dan kun je beginnen.</li>
+        <li><strong>Start je print:</strong> Klik op “Start print”, kies een letter in de pop-up en klik vervolgens op “Printen maar”. De printer begint met jouw 3D-print.</li>
+        <li><strong>Haal je print op:</strong> Als de printer klaar is, mag je de letter voorzichtig van het printbed halen.</li>
+      </ol>
+    </section>
+
+    <section id="printers" class="printers"></section>
+  </main>
+
+  <dialog id="printDialog">
+    <h2>Kies je letter</h2>
+    <p id="dialogPrinter"></p>
+    <select id="letterSelect" aria-label="Kies een letter">
+      <option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option><option value="E">E</option><option value="F">F</option><option value="G">G</option><option value="H">H</option><option value="I">I</option><option value="J">J</option><option value="K">K</option><option value="L">L</option><option value="M">M</option><option value="N">N</option><option value="O">O</option><option value="P">P</option><option value="Q">Q</option><option value="R">R</option><option value="S">S</option><option value="T">T</option><option value="U">U</option><option value="V">V</option><option value="W">W</option><option value="X">X</option><option value="Y">Y</option><option value="Z">Z</option>
+    </select>
+    <div class="dialog-actions">
+      <button class="secondary" id="cancelPrint">Annuleren</button>
+      <button id="confirmPrint">Printen maar</button>
+    </div>
+  </dialog>
+
+  <script>
+    const host = window.location.hostname;
+    const printers = [
+      { name: 'Zwart', port: 7125, color: '#222' },
+      { name: 'Wit', port: 7126, color: '#ddd' },
+      { name: 'Paars', port: 7127, color: '#7d4bb3' },
+      { name: 'Printer 4', port: 7128, color: '#5ab3b1' }
+    ].map((printer, index) => ({
+      ...printer,
+      id: 'printer-' + index,
+      url: 'http://' + host + ':' + printer.port
+    }));
+
+    const printersEl = document.getElementById('printers');
+    const dialog = document.getElementById('printDialog');
+    const dialogPrinter = document.getElementById('dialogPrinter');
+    const letterSelect = document.getElementById('letterSelect');
+    const confirmPrint = document.getElementById('confirmPrint');
+    const cancelPrint = document.getElementById('cancelPrint');
+    let selectedPrinter = null;
+
+    function renderPrinters() {
+      printersEl.innerHTML = printers.map(printer => `
+        <article class="printer" style="--printer-color:${printer.color}">
+          <h2>${printer.name}</h2>
+          <div class="status" id="${printer.id}-status">Status ophalen…</div>
+          <div class="progress" id="${printer.id}-progress"></div>
+          <button id="${printer.id}-button" disabled>Start print</button>
+        </article>`
+      ).join('');
+
+      printers.forEach(printer => {
+        document.getElementById(printer.id + '-button').addEventListener('click', () => openPrintDialog(printer));
+      });
+    }
+
+    function friendlyState(state) {
+      const labels = {
+        standby: 'Klaar om te printen',
+        complete: 'Klaar om te printen',
+        printing: 'Bezig met printen',
+        paused: 'Print gepauzeerd',
+        error: 'Printerfout',
+        cancelled: 'Klaar om te printen'
+      };
+      return labels[state] || state || 'Onbekend';
+    }
+
+    async function updatePrinter(printer) {
+      const statusEl = document.getElementById(printer.id + '-status');
+      const progressEl = document.getElementById(printer.id + '-progress');
+      const button = document.getElementById(printer.id + '-button');
+
+      try {
+        const response = await fetch(printer.url + '/printer/objects/query?print_stats&virtual_sdcard');
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+        const data = await response.json();
+        const state = data?.result?.status?.print_stats?.state;
+        const progress = data?.result?.status?.virtual_sdcard?.progress ?? 0;
+        const ready = ['standby', 'complete', 'cancelled'].includes(state);
+
+        statusEl.textContent = friendlyState(state);
+        progressEl.textContent = state === 'printing'
+          ? 'Voortgang: ' + Math.round(progress * 100) + '%'
+          : '';
+        button.disabled = !ready;
+      } catch (error) {
+        statusEl.textContent = 'Niet bereikbaar';
+        progressEl.textContent = '';
+        button.disabled = true;
+        console.error(printer.name, error);
+      }
+    }
+
+    function updateStatuses() {
+      printers.forEach(updatePrinter);
+    }
+
+    function openPrintDialog(printer) {
+      selectedPrinter = printer;
+      dialogPrinter.textContent = 'Printer: ' + printer.name;
+      letterSelect.value = 'A';
+      dialog.showModal();
+    }
+
+    function filenameForLetter(letter) {
+      return letter.toUpperCase() + '.gcode';
+    }
+
+    async function startPrint() {
+      if (!selectedPrinter) return;
+      const letter = letterSelect.value;
+      const filename = filenameForLetter(letter);
+
+      confirmPrint.disabled = true;
+      try {
+        const response = await fetch(selectedPrinter.url + '/printer/print/start', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filename })
+        });
+
+        if (!response.ok) {
+          const message = await response.text();
+          throw new Error('HTTP ' + response.status + ': ' + message);
+        }
+
+        dialog.close();
+        setTimeout(updateStatuses, 750);
+      } catch (error) {
+        alert('De print kon niet worden gestart. Controleer of ' + filename + ' op deze printer staat.');
+        console.error(error);
+      } finally {
+        confirmPrint.disabled = false;
+      }
+    }
+
+    cancelPrint.addEventListener('click', () => dialog.close());
+    confirmPrint.addEventListener('click', startPrint);
+
+    renderPrinters();
+    updateStatuses();
+    setInterval(updateStatuses, 5000);
+  </script>
+</body>
+</html>
