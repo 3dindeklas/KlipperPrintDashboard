@@ -3,15 +3,21 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#5ab3b1">
+  <meta name="theme-color" content="#4c325b">
   <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="styles.css">
+  <link rel="icon" type="image/png" href="assets/logo-3dindeklas.png">
   <title>Printerbeheer | 3D in de klas</title>
 </head>
 <body>
   <main class="app-shell admin-shell">
-    <a class="back-link" href="index.html">← Terug naar het dashboard</a>
-    <header class="admin-heading"><p class="brand">3D <span>in de klas</span></p><h1>Printerbeheer</h1></header>
+    <header class="site-header">
+      <div class="header-inner">
+        <a class="brand" href="https://www.3dindeklas.nl/" aria-label="Naar 3dindeklas.nl"><img src="assets/logo-3dindeklas.png" width="62" height="72" alt="3dindeklas"></a>
+        <div class="header-title"><span>LEREN DOOR CREËREN</span><strong>Printerbeheer</strong></div>
+        <a class="header-link" href="index.html">Terug naar dashboard <span aria-hidden="true">↗</span></a>
+      </div>
+    </header>
 
     <section id="authCard" class="panel auth-card">
       <h2 id="authTitle">Beheer openen</h2>
@@ -28,9 +34,11 @@
       <h2>Verbindingen</h2>
       <p class="admin-note">Vul per printer het IP-adres of de netwerknaam en Moonraker-poort in. De instellingen worden alleen in deze browser opgeslagen. Dit scherm is bedoeld als praktische afscherming voor deelnemers, niet als beveiliging tegen iemand met technische toegang tot de iPad.</p>
       <form id="settingsForm">
+        <div class="printer-settings-heading"><h2>Printers</h2><button id="addPrinter" class="button button-light" type="button">+ Printer toevoegen</button></div>
         <div id="printerSettings"></div>
+        <p id="emptyPrinters" class="empty-printers" hidden>Er zijn nog geen printers. Voeg een printer toe om hem op het dashboard te tonen.</p>
         <p id="saveNotice" class="admin-status" role="status" aria-live="polite"></p>
-        <div class="admin-actions"><button class="button button-light" id="resetEndpoints" type="button">Herstel standaardadressen</button><button class="button button-primary" type="submit">Opslaan en terug naar dashboard</button></div>
+        <div class="admin-actions"><button class="button button-light" id="resetEndpoints" type="button">Herstel standaardprinters</button><button class="button button-primary" type="submit">Opslaan en terug naar dashboard</button></div>
       </form>
     </section>
   </main>
