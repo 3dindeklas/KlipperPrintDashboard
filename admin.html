@@ -35,6 +35,10 @@
       <h2>Verbindingen</h2>
       <p class="admin-note">Vul per printer het IP-adres of de netwerknaam en Moonraker-poort in. De instellingen worden alleen in deze browser opgeslagen. Dit scherm is bedoeld als praktische afscherming voor deelnemers, niet als beveiliging tegen iemand met technische toegang tot de iPad.</p>
       <form id="settingsForm">
+        <section class="discovery-panel" aria-labelledby="discovery-title">
+          <div class="printer-settings-heading"><div><h2 id="discovery-title">Lokale Moonrakers zoeken</h2><p>Zoek op deze host naar Moonraker op de standaardpoorten. Een gevonden endpoint kun je direct als printer toevoegen.</p></div><button id="discoverPrinters" class="button button-light" type="button">Zoek printers</button></div>
+          <div id="discoveryResults" class="discovery-results" aria-live="polite"></div>
+        </section>
         <div class="printer-settings-heading"><h2>Printers</h2><button id="addPrinter" class="button button-light" type="button">+ Printer toevoegen</button></div>
         <div id="printerSettings"></div>
         <p id="emptyPrinters" class="empty-printers" hidden>Er zijn nog geen printers. Voeg een printer toe om hem op het dashboard te tonen.</p>
