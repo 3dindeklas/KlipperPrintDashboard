@@ -1,9 +1,10 @@
 {
-  "name": "3D Printer Demo",
+  "name": "3D in de klas Print Demo",
   "short_name": "Print Demo",
   "lang": "nl",
   "start_url": "./",
+  "scope": "./",
   "display": "standalone",
-  "background_color": "#f3f5f0",
-  "theme_color": "#5ab3b1"
+  "background_color": "#f7f6f9",
+  "theme_color": "#4c325b"
 }

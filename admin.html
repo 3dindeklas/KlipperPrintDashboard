@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#4c325b">
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" type="image/png" href="assets/logo-3dindeklas.png">
+  <title>Printerbeheer | 3D in de klas</title>
+</head>
+<body>
+  <main class="app-shell admin-shell">
+    <header class="site-header">
+      <div class="header-inner">
+        <a class="brand" href="https://www.3dindeklas.nl/" aria-label="Naar 3dindeklas.nl"><img src="assets/logo-3dindeklas.png" width="62" height="72" alt="3dindeklas"></a>
+        <div class="header-title"><span>LEREN DOOR CREËREN</span><strong>Printerbeheer</strong></div>
+        <a class="header-link" href="index.html">Terug naar dashboard <span aria-hidden="true">↗</span></a>
+      </div>
+    </header>
+
+    <section id="authCard" class="panel auth-card">
+      <h2 id="authTitle">Beheer openen</h2>
+      <p id="authDescription">De beheerinstellingen gelden alleen voor deze iPad en deze browser.</p>
+      <form id="authForm">
+        <div class="field"><label for="pinInput" id="pinLabel">Beheercode</label><input id="pinInput" type="password" inputmode="numeric" pattern="[0-9]{4,8}" minlength="4" maxlength="8" autocomplete="current-password" required></div>
+        <div id="confirmPinField" class="field" hidden><label for="confirmPinInput">Herhaal de beheercode</label><input id="confirmPinInput" type="password" inputmode="numeric" pattern="[0-9]{4,8}" minlength="4" maxlength="8" autocomplete="new-password"></div>
+        <button id="authSubmit" class="button button-primary" type="submit">Open beheer</button>
+        <p id="authNotice" class="admin-status" role="alert"></p>
+      </form>
+    </section>
+
+    <section id="settingsPanel" class="panel admin-panel" hidden>
+      <h2>Verbindingen</h2>
+      <p class="admin-note">Vul per printer het IP-adres of de netwerknaam en Moonraker-poort in. De instellingen worden alleen in deze browser opgeslagen. Dit scherm is bedoeld als praktische afscherming voor deelnemers, niet als beveiliging tegen iemand met technische toegang tot de iPad.</p>
+      <form id="settingsForm">
+        <div class="printer-settings-heading"><h2>Printers</h2><button id="addPrinter" class="button button-light" type="button">+ Printer toevoegen</button></div>
+        <div id="printerSettings"></div>
+        <p id="emptyPrinters" class="empty-printers" hidden>Er zijn nog geen printers. Voeg een printer toe om hem op het dashboard te tonen.</p>
+        <p id="saveNotice" class="admin-status" role="status" aria-live="polite"></p>
+        <div class="admin-actions"><button class="button button-light" id="resetEndpoints" type="button">Herstel standaardprinters</button><button class="button button-primary" type="submit">Opslaan en terug naar dashboard</button></div>
+      </form>
+    </section>
+  </main>
+  <script src="admin.js" defer></script>
+</body>
+</html>
