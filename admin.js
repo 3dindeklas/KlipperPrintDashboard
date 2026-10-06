@@ -150,7 +150,7 @@
   async function discoverMoonrakers() {
     const button = document.getElementById('discoverPrinters');
     const results = document.getElementById('discoveryResults');
-    const hosts = ['localhost', '127.0.0.1'];
+    const hosts = [...new Set([window.location.hostname, 'localhost', '127.0.0.1'].filter(host => host && !host.endsWith('.github.io')))];
     const ports = standardPorts;
     results.replaceChildren();
     button.disabled = true;
