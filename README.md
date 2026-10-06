@@ -9,7 +9,7 @@ Een iPad-vriendelijk dashboard voor workshops met meerdere Klipper/Moonraker-pri
 3. Tik op **Print mijn letter**.
 4. Haal de letter van het printbed wanneer de printer klaar is.
 
-De letterkeuze is een groot raster met A tot en met Z. De knoppen zijn geschikt voor aanraken op een iPad. De printerstatus wordt elke vijf seconden bijgewerkt; vlak voor een live print controleert het dashboard nogmaals of de printer vrij is.
+De letterkeuze is een groot raster met A tot en met Z. De knoppen zijn geschikt voor aanraken op een iPad. De printerstatus wordt elke vijf seconden bijgewerkt. Bij elke printer zie je ook de nozzle- en bedtemperatuur. Tijdens een print toont het dashboard de bestandsnaam, voortgang en geschatte resterende tijd. Met de vernieuwknop kun je de status direct opnieuw ophalen; vlak voor een live print controleert het dashboard nogmaals of de printer vrij is.
 
 ## iPad als app gebruiken
 
@@ -34,6 +34,8 @@ Op GitHub Pages staat de demomodus altijd aan. Daardoor kan de publieke demo noo
 Open `admin.html` of tik op **Printerbeheer** onder aan het dashboard. Stel bij het eerste gebruik een beheercode van 4 tot 8 cijfers in. In Printerbeheer kun je printers toevoegen en verwijderen, printernamen aanpassen en per printer het IP-adres of de netwerknaam, de Moonraker-poort en de randkleur van de printerkaart instellen. De standaardpoorten zijn `7125`, `7126`, `7127` en `7128`. Sla de wijzigingen op om de nieuwe printerlijst op het dashboard te tonen.
 
 De instellingen worden lokaal in de browser opgeslagen. Ze gelden dus alleen voor die iPad/browser en worden niet naar de printerhost of andere apparaten gekopieerd. Stel de printeradressen in voordat deelnemers de iPad gebruiken.
+
+In hetzelfde beheerscherm staan ook onderhoudsacties: assen homen, nozzle en bed voorverwarmen, een bed mesh meten en Klipper of de firmware herstarten. Voor iedere actie vraagt het dashboard om bevestiging. De knoppen zijn uitgeschakeld zolang de printer print of niet bereikbaar is. Bed mesh meten voert alleen de meting uit; sla een gewenste mesh daarna volgens de werkwijze van jouw printer op.
 
 De beheercode voorkomt dat deelnemers de beheerpagina per ongeluk openen. De code is geen serverbeveiliging: iemand met technische toegang tot de iPad kan lokale browserinstellingen aanpassen.
 
@@ -83,6 +85,7 @@ Gebruik GitHub Pages alleen om de nepdata te bekijken. Voor echte printers gebru
 | `styles.css` | Huisstijl en mobiele/iPad-weergave |
 | `admin.html`, `admin.js` | Printers toevoegen/verwijderen en namen, IP’s, poorten en randkleuren beheren |
 | `assets/` | 3Dindeklas-logo, Quicksand-lettertypen en fontlicentie |
+| `icons/` | PWA-appicoon en printer-, bed- en vernieuwiconen |
 | `manifest.json` | Instellingen voor gebruik als webapp |
 | `compose.yaml` | Nginx-webserver naast Klipper in Docker |
 | `.github/workflows/deploy-pages.yml` | Publiceren van de GitHub Pages-demo |
@@ -91,10 +94,10 @@ Gebruik GitHub Pages alleen om de nepdata te bekijken. Voor echte printers gebru
 
 - **Printer niet bereikbaar:** controleer of de iPad en printer op hetzelfde lokale netwerk zitten en of het ingestelde IP-adres en de poort kloppen.
 - **CORS-fout:** controleer of `cors_domains` exact de dashboard-origin bevat, inclusief `http://` en `:8080`; herstart Moonraker daarna.
-- **Startknop blijft uit:** alleen `standby`, `complete` en `cancelled` gelden als vrije printerstatus.
-- **Printbestand niet gevonden:** controleer of het bestand met hoofdletter in de G-code-map van die printer staat, bijvoorbeeld `A.gcode`.
+- **Startknop blijft uit:** alleen `idle`, `standby`, `complete` en `cancelled` gelden als vrije printerstatus.
+- **Printbestand niet gevonden:** controleer of de hoofdletterbestanden in `3dindeklas/fluidd_dashboard/letters/` in de G-code-map van de printer staan, bijvoorbeeld `A.gcode`.
 - **Verkeerde beheerinstellingen:** open **Beheer**, voer de code in en pas de adressen aan. **Herstel standaardadressen** zet de poorten en standaardhost terug.
 
 ## Moonraker API
 
-Het dashboard leest `/printer/objects/query?print_stats&virtual_sdcard` uit en start een gekozen bestand met `POST /printer/print/start`, bijvoorbeeld `A.gcode`.
+Het dashboard leest `/printer/objects/query` uit voor status, voortgang, bestandsnaam en temperaturen. Vóór het printen probeert het `BED_MESH_PROFILE LOAD=default` te laden; als dat niet lukt, gaat de print door. Het gekozen bestand wordt gestart met `POST /printer/print/start`, vanuit `3dindeklas/fluidd_dashboard/letters/`.
