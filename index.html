@@ -10,6 +10,7 @@
   <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="styles.css">
   <link rel="icon" type="image/png" href="assets/logo-3dindeklas.png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
   <title>3D Printer Demo | 3D in de klas</title>
 </head>
 <body>
@@ -38,7 +39,7 @@
 
     <section id="printers" class="printer-grid" aria-label="Kies een printer"></section>
     <p id="noPrinters" class="empty-printers" hidden>Er zijn nog geen printers ingesteld. Vraag een begeleider om printers toe te voegen via <a href="admin.html">Printerbeheer</a>.</p>
-    <footer class="app-footer"><span>Een idee wordt iets echts.</span><a id="adminLink" href="admin.html">Printerbeheer</a></footer>
+    <footer class="app-footer"><span>Een idee wordt iets echts.</span><div class="footer-actions"><button id="refreshButton" class="refresh-button" type="button" aria-label="Dashboard vernieuwen" title="Dashboard vernieuwen"><img src="icons/refresh.svg" alt="" width="18" height="18"></button><a id="adminLink" href="admin.html">Printerbeheer</a></div></footer>
   </main>
 
   <dialog id="letterDialog" class="letter-dialog" aria-labelledby="letter-title">
