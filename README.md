@@ -4,7 +4,7 @@ Een iPad-vriendelijk dashboard voor workshops met meerdere Klipper/Moonraker-pri
 
 ## Deelnemers gebruiken het dashboard
 
-1. Tik op de printerkleur die bij het handvat past en waar **Klaar om te printen** staat.
+1. Tik op de printer met het juiste filament en waar **Klaar om te printen** staat.
 2. Tik in het lettervenster op de gewenste letter. Het grote voorbeeld laat de fysieke, 3D-geprinte letter zien.
 3. Tik op **Print mijn letter**.
 4. Haal de letter van het printbed wanneer de printer klaar is.
@@ -31,7 +31,7 @@ Op GitHub Pages staat de demomodus altijd aan. Daardoor kan de publieke demo noo
 
 ## Printeradressen beheren
 
-Open `admin.html` of tik op **Printerbeheer** onder aan het dashboard. Stel bij het eerste gebruik een beheercode van 4 tot 8 cijfers in. In Printerbeheer kun je printers toevoegen en verwijderen, printernamen aanpassen en per printer het IP-adres of de netwerknaam, de Moonraker-poort en de randkleur van de printerkaart instellen. De standaardpoorten zijn `7125`, `7126`, `7127` en `7128`. Sla de wijzigingen op om de nieuwe printerlijst op het dashboard te tonen.
+Open `admin.html` of tik op **Printerbeheer** onder aan het dashboard. Stel bij het eerste gebruik een beheercode van 4 tot 8 cijfers in. In Printerbeheer kun je lokale Moonrakers zoeken, printers toevoegen en verwijderen, printernamen aanpassen en per printer het IP-adres of de netwerknaam, de Moonraker-poort en de filamentkleur instellen. De standaardpoorten zijn `8401`, `8301`, `8201` en `8101`. Sla de wijzigingen op om de nieuwe printerlijst op het dashboard te tonen.
 
 De instellingen worden lokaal in de browser opgeslagen. Ze gelden dus alleen voor die iPad/browser en worden niet naar de printerhost of andere apparaten gekopieerd. Stel de printeradressen in voordat deelnemers de iPad gebruiken.
 
@@ -83,7 +83,7 @@ Gebruik GitHub Pages alleen om de nepdata te bekijken. Voor echte printers gebru
 | --- | --- |
 | `index.html`, `app.js` | Deelnemersscherm, printerstatus en letterkeuze |
 | `styles.css` | Huisstijl en mobiele/iPad-weergave |
-| `admin.html`, `admin.js` | Printers toevoegen/verwijderen en namen, IP’s, poorten en randkleuren beheren |
+| `admin.html`, `admin.js` | Printers zoeken/toevoegen/verwijderen en namen, IP’s, poorten en filamentkleuren beheren |
 | `assets/` | 3Dindeklas-logo, Quicksand-lettertypen en fontlicentie |
 | `icons/` | PWA-appicoon en printer-, bed- en vernieuwiconen |
 | `manifest.json` | Instellingen voor gebruik als webapp |
