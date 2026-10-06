@@ -2,6 +2,8 @@
   'use strict';
 
   const CONFIG_KEY = 'klipperPrintDashboard.printers.v1';
+  const HISTORY_KEY = 'klipperPrintDashboard.printHistory.v1';
+  const HISTORY_API = '/api/print-history';
   const PIN_KEY = 'klipperPrintDashboard.adminPin.v1';
   const SESSION_KEY = 'klipperPrintDashboard.adminUnlocked';
   const params = new URLSearchParams(window.location.search);
@@ -25,6 +27,7 @@
   const settingsForm = document.getElementById('settingsForm');
   const saveNotice = document.getElementById('saveNotice');
   let isFirstRun = !localStorage.getItem(PIN_KEY);
+  let historyEntries = [];
 
   function newId() {
     return `printer-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
@@ -139,8 +142,66 @@
     settingsPanel.hidden = false;
     sessionStorage.setItem(SESSION_KEY, 'yes');
     renderSettings();
+    loadHistory();
     refreshMaintenanceStatuses();
     if (!demoMode) setInterval(refreshMaintenanceStatuses, 10000);
+  }
+
+  function dateKey(value = new Date()) {
+    const date = new Date(value);
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  }
+
+  function readLocalHistory() {
+    try {
+      const value = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+      return Array.isArray(value) ? value : [];
+    } catch { return []; }
+  }
+
+  async function loadHistory() {
+    if (demoMode) { historyEntries = readLocalHistory(); renderHistory(); return; }
+    try {
+      const response = await fetch(HISTORY_API, { headers: { Accept: 'application/json' } });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json();
+      historyEntries = Array.isArray(data.entries) ? data.entries : [];
+    } catch { historyEntries = readLocalHistory(); }
+    renderHistory();
+  }
+
+  function renderHistory() {
+    const today = dateKey();
+    document.getElementById('historyToday').textContent = historyEntries.filter(entry => dateKey(entry.printedAt) === today).length;
+    document.getElementById('historyTotal').textContent = historyEntries.length;
+    const recent = document.getElementById('historyRecent');
+    recent.replaceChildren();
+    historyEntries.slice(0, 8).forEach(entry => {
+      const row = document.createElement('div');
+      row.className = 'history-row';
+      const text = document.createElement('span');
+      text.textContent = `${entry.letter || '?'} · ${entry.printerName || entry.printerId || 'Printer'}`;
+      const date = document.createElement('time');
+      date.dateTime = entry.printedAt || '';
+      date.textContent = entry.printedAt ? new Date(entry.printedAt).toLocaleString('nl-NL', { dateStyle: 'short', timeStyle: 'short' }) : '';
+      row.append(text, date);
+      recent.append(row);
+    });
+    if (!historyEntries.length) {
+      const empty = document.createElement('p');
+      empty.textContent = 'Nog geen letters geregistreerd.';
+      recent.append(empty);
+    }
+  }
+
+  async function resetHistory() {
+    if (!window.confirm('Alle geregistreerde prints wissen?')) return;
+    localStorage.removeItem(HISTORY_KEY);
+    historyEntries = [];
+    if (!demoMode) {
+      try { await fetch(HISTORY_API, { method: 'DELETE' }); } catch { /* local fallback is already reset */ }
+    }
+    renderHistory();
   }
 
   function discoveryName(version, port) {
@@ -281,15 +342,16 @@
         const buttons = [...section.querySelectorAll('[data-maintenance-action]')];
         try {
           const endpoint = currentPrinterEndpoint(printer, section);
-          const data = await requestPrinterJson(`${endpoint}/printer/objects/query?print_stats=state&webhooks&extruder=temperature,target&heater_bed=temperature,target`);
+          const data = await requestPrinterJson(`${endpoint}/printer/objects/query?print_stats=state&webhooks=state&extruder=temperature,target&heater_bed=temperature,target`);
           const machine = data?.result?.status || {};
           const state = machine.print_stats?.state;
+          const klipperState = machine.webhooks?.state || 'unknown';
           if (!state) throw new Error('Geen printerstatus ontvangen.');
           section.querySelector('.admin-extruder-temp').textContent = `${formatTemperature(machine.extruder?.temperature)} / ${formatTemperature(machine.extruder?.target)}`;
           section.querySelector('.admin-bed-temp').textContent = `${formatTemperature(machine.heater_bed?.temperature)} / ${formatTemperature(machine.heater_bed?.target)}`;
-          status.textContent = state === 'printing' ? 'De printer is bezig. Onderhoudsacties zijn tijdelijk uitgeschakeld.' : `Status: ${state}`;
+          status.textContent = `Klipper: ${klipperState} · Print: ${state}`;
           const hot = Number(machine.extruder?.temperature) > 35 || Number(machine.extruder?.target) > 0 || Number(machine.heater_bed?.temperature) > 35 || Number(machine.heater_bed?.target) > 0;
-          buttons.forEach(button => { button.disabled = state === 'printing' || maintenanceBusy.has(printer.id) || (button.dataset.maintenanceAction === 'cool' && !hot); });
+          buttons.forEach(button => { const restart = button.dataset.maintenanceAction.startsWith('restart-'); button.disabled = (!restart && klipperState !== 'ready') || state === 'printing' || maintenanceBusy.has(printer.id) || (button.dataset.maintenanceAction === 'cool' && !hot); });
         } catch (error) {
           status.textContent = `${printer.name} is niet bereikbaar: ${error.message}`;
           buttons.forEach(button => { button.disabled = true; });
@@ -374,6 +436,7 @@
   });
 
   document.getElementById('discoverPrinters').addEventListener('click', discoverMoonrakers);
+  document.getElementById('resetHistory').addEventListener('click', resetHistory);
 
   document.getElementById('printerSettings').addEventListener('input', event => {
     const section = event.target.closest('.admin-printer');
