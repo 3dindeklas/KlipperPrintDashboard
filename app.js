@@ -2,15 +2,18 @@
   'use strict';
 
   const CONFIG_KEY = 'klipperPrintDashboard.printers.v1';
+  const HISTORY_KEY = 'klipperPrintDashboard.printHistory.v1';
+  const HISTORY_API = '/api/print-history';
   const GCODE_DIRECTORY = '3dindeklas/fluidd_dashboard/letters';
+  const legacyPorts = [7125, 7126, 7127, 7128];
   const params = new URLSearchParams(window.location.search);
   const isGitHubPages = window.location.hostname.endsWith('.github.io');
   const demoMode = params.get('demo') === '1' || isGitHubPages;
   const printerDefinitions = [
-    { id: 'black', name: 'Zwart', port: 7125, color: '#252a29' },
-    { id: 'white', name: 'Wit', port: 7126, color: '#b9c2bd' },
-    { id: 'purple', name: 'Paars', port: 7127, color: '#7d4bb3' },
-    { id: 'printer4', name: 'Printer 4', port: 7128, color: '#5ab3b1' }
+    { id: 'black', name: 'Zwart', port: 8401, color: '#252a29' },
+    { id: 'white', name: 'Wit', port: 8301, color: '#b9c2bd' },
+    { id: 'purple', name: 'Paars', port: 8201, color: '#7d4bb3' },
+    { id: 'printer4', name: 'Printer 4', port: 8101, color: '#5ab3b1' }
   ];
   const fakePrinters = {
     black: { state: 'standby', extruder: 24, extruderTarget: 0, bed: 23, bedTarget: 0 },
@@ -29,6 +32,7 @@
   let selectedPrinter = null;
   let selectedLetter = 'A';
   let polling = false;
+  let historyEntries = [];
 
   if (demoMode) document.getElementById('adminLink').href = 'admin.html?demo=1';
 
@@ -45,7 +49,7 @@
         id: typeof item.id === 'string' && item.id ? item.id : `printer-${index + 1}`,
         name: typeof item.name === 'string' && item.name.trim() ? item.name.trim() : (printerDefinitions.find(printer => printer.id === item.id)?.name || `Printer ${index + 1}`),
         host: validHost(item.host) ? item.host : (window.location.hostname || 'localhost'),
-        port: validPort(item.port) ? Number(item.port) : (printerDefinitions.find(printer => printer.id === item.id)?.port || 7125 + index),
+        port: legacyPorts.includes(Number(item.port)) && Number(item.port) === legacyPorts[index] ? [8401, 8301, 8201, 8101][index] : (validPort(item.port) ? Number(item.port) : (printerDefinitions.find(printer => printer.id === item.id)?.port || [8401, 8301, 8201, 8101][index] || 8401)),
         color: /^#[\da-f]{6}$/i.test(item.color || '') ? item.color : (printerDefinitions.find(printer => printer.id === item.id)?.color || '#4c325b')
       }));
     } catch {
@@ -60,6 +64,39 @@
   function validPort(port) {
     const value = Number(port);
     return Number.isInteger(value) && value >= 1 && value <= 65535;
+  }
+
+  function dateKey(value = new Date()) {
+    const date = new Date(value);
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  }
+
+  function readLocalHistory() {
+    try {
+      const value = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+      return Array.isArray(value) ? value : [];
+    } catch { return []; }
+  }
+
+  async function loadHistory() {
+    if (demoMode) { historyEntries = readLocalHistory(); return; }
+    try {
+      const response = await fetch(HISTORY_API, { headers: { Accept: 'application/json' } });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json();
+      historyEntries = Array.isArray(data.entries) ? data.entries : [];
+    } catch {
+      historyEntries = readLocalHistory();
+    }
+  }
+
+  function recordPrint(printer, letter) {
+    const entry = { id: `print-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, printerId: printer.id, printerName: printer.name, letter, printedAt: new Date().toISOString() };
+    historyEntries = [entry, ...historyEntries].slice(0, 2000);
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(historyEntries));
+    if (!demoMode) {
+      fetch(HISTORY_API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(entry) }).catch(() => {});
+    }
   }
 
   let printers = loadPrinters();
@@ -91,6 +128,7 @@
     return ({
       idle: 'Klaar om te printen', standby: 'Klaar om te printen', complete: 'Klaar om te printen', cancelled: 'Klaar om te printen',
       printing: 'Bezig met printen', paused: 'Print gepauzeerd', error: 'Printerfout',
+      'klipper-not-ready': 'Klipper is niet gereed',
       disconnected: 'Niet bereikbaar'
     })[state] || 'Status onbekend';
   }
@@ -109,11 +147,12 @@
     return [hours, minutes, remainingSeconds].map(value => String(value).padStart(2, '0')).join(':');
   }
 
-  function renderStatus(printer, state, progress = 0, message = '', telemetry = {}) {
+  function renderStatus(printer, state, progress = 0, message = '', telemetry = {}, klipperState = 'ready') {
     const card = printer.card;
     const stateElement = card.querySelector('.printer-state');
-    const ready = ['idle', 'standby', 'complete', 'cancelled'].includes(state);
-    stateElement.className = `printer-state state-${ready ? 'ready' : state === 'printing' ? 'printing' : state === 'paused' ? 'paused' : state === 'error' ? 'error' : 'offline'}`;
+    const ready = klipperState === 'ready' && ['idle', 'standby', 'complete', 'cancelled'].includes(state);
+    const blocked = klipperState !== 'ready';
+    stateElement.className = `printer-state state-${ready ? 'ready' : state === 'printing' ? 'printing' : state === 'paused' ? 'paused' : state === 'error' || blocked ? 'error' : 'offline'}`;
     card.querySelector('.state-label').textContent = message || stateLabel(state);
     const track = card.querySelector('.progress-track');
     track.hidden = state !== 'printing';
@@ -145,7 +184,7 @@
       bed: { temperature: fake.bed ?? 23, target: fake.bedTarget ?? 0 },
       filename: fake.filename,
       remainingSeconds: eta
-    });
+    }, fake.klipper || 'ready');
   }
 
   async function requestJson(url, options = {}) {
@@ -170,19 +209,20 @@
   async function updatePrinter(printer) {
     if (demoMode) return fakeStatus(printer);
     try {
-      const data = await requestJson(`${printerUrl(printer)}/printer/objects/query?print_stats=state,filename,print_duration&virtual_sdcard=progress&extruder=temperature,target&heater_bed=temperature,target`);
+      const data = await requestJson(`${printerUrl(printer)}/printer/objects/query?print_stats=state,filename,print_duration&virtual_sdcard=progress&webhooks=state&extruder=temperature,target&heater_bed=temperature,target`);
       const status = data?.result?.status;
       const state = status?.print_stats?.state;
       if (!state) throw new Error('Geen printerstatus ontvangen');
+      const klipperState = status?.webhooks?.state || 'unknown';
       const progress = status?.virtual_sdcard?.progress || 0;
       const printDuration = Number(status?.print_stats?.print_duration) || 0;
       const remainingSeconds = progress > 0 && progress < 1 && printDuration > 0 ? Math.max(0, printDuration / progress - printDuration) : null;
-      renderStatus(printer, state, progress, '', {
+      renderStatus(printer, klipperState === 'ready' ? state : 'klipper-not-ready', progress, klipperState === 'ready' ? '' : `Klipper: ${klipperState}`, {
         extruder: status?.extruder,
         bed: status?.heater_bed,
         filename: status?.print_stats?.filename,
         remainingSeconds
-      });
+      }, klipperState);
     } catch (error) {
       renderStatus(printer, 'disconnected', 0, 'Niet bereikbaar');
       console.warn(`Status van ${printer.name} ophalen mislukt:`, error);
@@ -238,11 +278,18 @@
       if (demoMode) {
         fakePrinters[printer.id] = { state: 'printing', baseProgress: 0, startedAt: Date.now(), durationMs: 30000, filename: `${selectedLetter}.gcode`, extruder: 25, extruderTarget: 200, bed: 23, bedTarget: 60 };
         letterDialog.close();
+        recordPrint(printer, selectedLetter);
         await updateStatuses();
         return;
       }
-      const latest = await requestJson(`${printerUrl(printer)}/printer/objects/query?print_stats`);
-      const state = latest?.result?.status?.print_stats?.state;
+      const latest = await requestJson(`${printerUrl(printer)}/printer/objects/query?print_stats=state&webhooks=state`);
+      const latestStatus = latest?.result?.status;
+      const state = latestStatus?.print_stats?.state;
+      if (latestStatus?.webhooks?.state !== 'ready') {
+        await updatePrinter(printer);
+        dialogNotice.textContent = `Klipper is niet gereed (${latestStatus?.webhooks?.state || 'onbekend'}). Probeer het opnieuw zodra Klipper ready is.`;
+        return;
+      }
       if (!['idle', 'standby', 'complete', 'cancelled'].includes(state)) {
         await updatePrinter(printer);
         dialogNotice.textContent = 'Deze printer is niet meer vrij. Kies een andere printer.';
@@ -259,6 +306,7 @@
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ filename })
       });
       letterDialog.close();
+      recordPrint(printer, selectedLetter);
       setTimeout(updateStatuses, 700);
     } catch (error) {
       console.error(`Print ${filename} starten op ${printer.name} mislukt:`, error);
@@ -274,6 +322,7 @@
   document.getElementById('refreshButton').addEventListener('click', () => window.location.reload());
   renderPrinters();
   buildLetterButtons();
+  loadHistory();
   updateStatuses();
   setInterval(updateStatuses, 5000);
 })();
