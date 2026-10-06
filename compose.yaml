@@ -1,9 +1,12 @@
 services:
   klipper-print-dashboard:
-    image: nginx:alpine
+    image: node:22-alpine
     container_name: klipper-print-dashboard
     restart: unless-stopped
+    working_dir: /app
+    command: ["node", "server.mjs"]
     ports:
-      - "8080:80"
+      - "8080:8080"
     volumes:
-      - ./:/usr/share/nginx/html:ro
+      - ./:/app:ro
+      - ./data:/app/data
