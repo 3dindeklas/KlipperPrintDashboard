@@ -23,7 +23,7 @@
 }
 
 * { box-sizing: border-box; }
-body { margin: 0; min-height: 100vh; padding: 0 14px max(22px, env(safe-area-inset-bottom)); }
+body { margin: 0; min-height: 100vh; padding: max(14px, env(safe-area-inset-top)) 14px max(22px, env(safe-area-inset-bottom)); }
 button, input { font: inherit; }
 button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
 button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid #174d49; outline-offset: 3px; }
@@ -110,6 +110,13 @@ dialog { color: var(--ink); font: inherit; }
 
 .admin-shell { max-width: 1000px; }
 .admin-note { padding: 14px 16px; margin-bottom: 16px; border-left: 5px solid var(--yellow); border-radius: 8px 14px 14px 8px; background: #fff7df; color: #594817; line-height: 1.5; }
+.discovery-panel { padding: 16px; margin-bottom: 20px; border: 1px solid var(--line); border-radius: 14px; background: var(--paper); }
+.discovery-panel p { margin: 4px 0 0; color: var(--muted); font-size: .86rem; line-height: 1.45; }
+.discovery-results { display: grid; gap: 8px; margin-top: 12px; }
+.discovery-result { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
+.discovery-result strong { display: block; color: var(--plum-dark); }
+.discovery-result span { color: var(--muted); font-size: .82rem; }
+.discovery-result .button { min-height: 40px; padding: 8px 12px; font-size: .82rem; }
 .maintenance-panel { padding: 18px; margin-top: 18px; border: 1px solid var(--line); border-radius: 14px; background: var(--paper); }
 .maintenance-panel h3 { margin-bottom: 6px; color: var(--plum-dark); font-size: 1.1rem; }
 .maintenance-status { min-height: 1.4em; margin: 8px 0 0; color: var(--muted); font-size: .88rem; }
@@ -149,6 +156,8 @@ dialog { color: var(--ink); font: inherit; }
   .dialog-actions { flex-direction: column-reverse; }
   .field-grid { grid-template-columns: minmax(0, 1fr) minmax(95px, .45fr); }
   .admin-actions { flex-direction: column; }
+  .discovery-panel .printer-settings-heading { align-items: stretch; flex-direction: column; }
+  .discovery-result { align-items: stretch; flex-direction: column; }
   .header-inner { width: min(100% - 20px, 1000px); min-height: 82px; gap: 10px; }
   .brand { flex-basis: 62px; height: 64px; padding-right: 8px; }
   .brand img { width: 52px; height: 60px; }
