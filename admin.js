@@ -155,6 +155,14 @@
     results.replaceChildren();
     button.disabled = true;
     button.textContent = 'Zoeken…';
+    if (demoMode) {
+      const message = document.createElement('p');
+      message.textContent = 'Demomodus: lokale netwerkdetectie is uitgeschakeld.';
+      results.append(message);
+      button.disabled = false;
+      button.textContent = 'Zoek printers';
+      return;
+    }
     const found = [];
     const probe = async (host, port) => {
       const controller = new AbortController();
