@@ -62,7 +62,15 @@ h2 { margin-bottom: 10px; font-size: clamp(1.25rem, 3vw, 1.6rem); }
 .state-ready .state-dot { background: #399c67; }
 .state-printing .state-dot { background: #e4a72f; }
 .state-error .state-dot, .state-paused .state-dot, .state-offline .state-dot { background: #d96c55; }
-.printer-detail { min-height: 1.4em; margin: 0 0 12px; color: var(--muted); font-size: .9rem; }
+.printer-detail { min-height: 1.4em; margin: 0 0 8px; color: var(--muted); font-size: .9rem; }
+.printer-telemetry { display: grid; gap: 6px; padding: 10px 0 8px; border-top: 1px solid var(--line); }
+.telemetry-row { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: .82rem; }
+.telemetry-row img { width: 18px; height: 18px; flex: 0 0 18px; }
+.telemetry-row strong { margin-left: auto; color: var(--ink); font-size: .85rem; font-variant-numeric: tabular-nums; }
+.printer-job { display: flex; justify-content: space-between; gap: 8px; margin: 2px 0 10px; color: var(--muted); font-size: .78rem; }
+.printer-job[hidden] { display: none; }
+.printer-job span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.printer-job strong { flex: 0 0 auto; color: var(--plum); font-variant-numeric: tabular-nums; }
 .progress-track { height: 11px; margin: 10px 0 8px; overflow: hidden; border-radius: 999px; background: #e9eeeb; }
 .progress-bar { height: 100%; border-radius: inherit; background: var(--teal); transition: width .25s ease; }
 .button { min-height: 54px; padding: 13px 18px; border: 0; border-radius: 15px; font-weight: 700; cursor: pointer; }
@@ -72,6 +80,10 @@ h2 { margin-bottom: 10px; font-size: clamp(1.25rem, 3vw, 1.6rem); }
 .button:disabled { background: #c5cdca; color: #56625e; cursor: not-allowed; }
 .button-light { border: 1px solid var(--line); background: #fff; color: var(--ink); }
 .app-footer { display: flex; justify-content: space-between; align-items: center; padding: 16px 4px 4px; color: var(--muted); font-size: .85rem; }
+.footer-actions { display: flex; align-items: center; gap: 14px; }
+.refresh-button { display: inline-grid; width: 42px; height: 42px; place-items: center; padding: 0; border: 1px solid var(--line); border-radius: 12px; background: #fff; cursor: pointer; }
+.refresh-button img { width: 18px; height: 18px; }
+.refresh-button:active img { transform: rotate(90deg); }
 .app-footer a { color: var(--teal-dark); font-weight: 700; text-decoration: none; }
 .app-footer a:hover { text-decoration: underline; }
 
@@ -98,6 +110,13 @@ dialog { color: var(--ink); font: inherit; }
 
 .admin-shell { max-width: 1000px; }
 .admin-note { padding: 14px 16px; margin-bottom: 16px; border-left: 5px solid var(--yellow); border-radius: 8px 14px 14px 8px; background: #fff7df; color: #594817; line-height: 1.5; }
+.maintenance-panel { padding: 18px; margin-top: 18px; border: 1px solid var(--line); border-radius: 14px; background: var(--paper); }
+.maintenance-panel h3 { margin-bottom: 6px; color: var(--plum-dark); font-size: 1.1rem; }
+.maintenance-status { min-height: 1.4em; margin: 8px 0 0; color: var(--muted); font-size: .88rem; }
+.maintenance-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin-top: 12px; }
+.maintenance-actions .button { min-height: 48px; padding: 10px 12px; font-size: .9rem; }
+.button-warning { background: #fff0d0; color: #624713; }
+.button-danger { background: #f9e6e4; color: #853b32; }
 .admin-panel { padding: clamp(18px, 4vw, 28px); }
 .admin-printer { padding: 18px; margin: 14px 0; border: 2px solid var(--printer-color); border-radius: 14px; background: #fff; }
 .admin-printer-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }

@@ -4,6 +4,10 @@
   const CONFIG_KEY = 'klipperPrintDashboard.printers.v1';
   const PIN_KEY = 'klipperPrintDashboard.adminPin.v1';
   const SESSION_KEY = 'klipperPrintDashboard.adminUnlocked';
+  const params = new URLSearchParams(window.location.search);
+  const demoMode = params.get('demo') === '1' || window.location.hostname.endsWith('.github.io');
+  const maintenanceBusy = new Set();
+  let maintenancePolling = false;
   const definitions = [
     { id: 'black', name: 'Zwart', host: window.location.hostname || 'localhost', port: 7125, color: '#252a29' },
     { id: 'white', name: 'Wit', host: window.location.hostname || 'localhost', port: 7126, color: '#b9c2bd' },
@@ -100,7 +104,28 @@
       const fields = document.createElement('div');
       fields.className = 'field-grid';
       fields.append(name.wrapper, host.wrapper, port.wrapper, color.wrapper);
-      section.append(heading, fields);
+      const maintenance = document.createElement('section');
+      maintenance.className = 'maintenance-panel';
+      maintenance.innerHTML = '<h3>Onderhoud en bediening</h3><p class="admin-note">Gebruik deze opdrachten alleen als de printer vrij is. Controleer vóór homing of bedmeting of het printbed vrij is.</p><div class="maintenance-telemetry"><div class="telemetry-row"><img src="icons/extruder.svg" alt=""><span>Nozzle</span><strong class="admin-extruder-temp">— / — °C</strong></div><div class="telemetry-row"><img src="icons/heated-bed.svg" alt=""><span>Printbed</span><strong class="admin-bed-temp">— / — °C</strong></div></div><p class="maintenance-status" role="status" aria-live="polite">Printerstatus ophalen…</p><div class="maintenance-actions"></div>';
+      const actionList = [
+        ['home', 'Home alle assen', 'button-light'],
+        ['preheat', 'Voorverwarmen', 'button-light'],
+        ['bed-mesh', 'Bed mesh meten', 'button-light'],
+        ['restart-klipper', 'Herstart Klipper', 'button-warning'],
+        ['restart-firmware', 'Herstart firmware', 'button-danger']
+      ];
+      const actions = maintenance.querySelector('.maintenance-actions');
+      for (const [action, label, style] of actionList) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = `button ${style}`;
+        button.dataset.maintenanceAction = action;
+        button.textContent = label;
+        button.disabled = true;
+        button.addEventListener('click', () => runMaintenanceCommand(printer, action, section));
+        actions.append(button);
+      }
+      section.append(heading, fields, maintenance);
       container.append(section);
     });
     document.getElementById('emptyPrinters').hidden = container.childElementCount > 0;
@@ -111,6 +136,112 @@
     settingsPanel.hidden = false;
     sessionStorage.setItem(SESSION_KEY, 'yes');
     renderSettings();
+    refreshMaintenanceStatuses();
+    if (!demoMode) setInterval(refreshMaintenanceStatuses, 10000);
+  }
+
+  const maintenanceCommands = {
+    home: {
+      prompt: 'De printer beweegt de assen naar de homingpositie. Controleer of er niets op het bed of in de bewegingsruimte ligt. Doorgaan?',
+      script: 'G28'
+    },
+    preheat: {
+      prompt: 'De nozzle wordt verwarmd tot 200 °C en het bed tot 60 °C. Doorgaan?',
+      script: 'SET_HEATER_TEMPERATURE heater=extruder target=200\nSET_HEATER_TEMPERATURE heater=heater_bed target=60'
+    },
+    'bed-mesh': {
+      prompt: 'De printer beweegt tijdens de bedmeting. Maak het printbed vrij en controleer de bewegingsruimte. Doorgaan?',
+      script: 'BED_MESH_CALIBRATE'
+    },
+    'restart-klipper': { prompt: 'Klipper op deze printer herstarten?', script: 'RESTART' },
+    'restart-firmware': { prompt: 'De printerfirmware op deze printer herstarten?', script: 'FIRMWARE_RESTART' }
+  };
+
+  function formatTemperature(value) {
+    if (value === null || value === undefined || value === '') return '— °C';
+    const temperature = Number(value);
+    return Number.isFinite(temperature) ? `${Math.round(temperature)} °C` : '— °C';
+  }
+
+  async function requestPrinterJson(url, options = {}) {
+    const { timeout = 10000, ...fetchOptions } = options;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeout);
+    try {
+      const response = await fetch(url, { ...fetchOptions, signal: controller.signal });
+      const responseText = await response.text();
+      let data = {};
+      if (responseText) {
+        try { data = JSON.parse(responseText); }
+        catch { throw new Error(`Ongeldig printerantwoord (HTTP ${response.status})`); }
+      }
+      if (!response.ok || data?.error) throw new Error(data?.error?.message || data?.error || `HTTP ${response.status}`);
+      return data;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  function currentPrinterEndpoint(printer, section) {
+    const host = section.querySelector('.host-input').value.trim();
+    const port = Number(section.querySelector('.port-input').value);
+    if (!host || !Number.isInteger(port) || port < 1 || port > 65535) throw new Error('Vul eerst een geldig IP-adres en poort in.');
+    return `http://${host}:${port}`;
+  }
+
+  async function refreshMaintenanceStatuses() {
+    if (maintenancePolling || demoMode) {
+      if (demoMode) document.querySelectorAll('.maintenance-status').forEach(status => { status.textContent = 'Demomodus: onderhoudsacties zijn uitgeschakeld.'; });
+      return;
+    }
+    maintenancePolling = true;
+    try {
+      await Promise.all([...document.querySelectorAll('.admin-printer')].map(async section => {
+        const printer = { id: section.dataset.printerId, name: section.querySelector('.name-input').value.trim() || 'Printer' };
+        const status = section.querySelector('.maintenance-status');
+        const buttons = [...section.querySelectorAll('[data-maintenance-action]')];
+        try {
+          const endpoint = currentPrinterEndpoint(printer, section);
+          const data = await requestPrinterJson(`${endpoint}/printer/objects/query?print_stats=state&webhooks&extruder=temperature,target&heater_bed=temperature,target`);
+          const machine = data?.result?.status || {};
+          const state = machine.print_stats?.state;
+          if (!state) throw new Error('Geen printerstatus ontvangen.');
+          section.querySelector('.admin-extruder-temp').textContent = `${formatTemperature(machine.extruder?.temperature)} / ${formatTemperature(machine.extruder?.target)}`;
+          section.querySelector('.admin-bed-temp').textContent = `${formatTemperature(machine.heater_bed?.temperature)} / ${formatTemperature(machine.heater_bed?.target)}`;
+          status.textContent = state === 'printing' ? 'De printer is bezig. Onderhoudsacties zijn tijdelijk uitgeschakeld.' : `Status: ${state}`;
+          buttons.forEach(button => { button.disabled = state === 'printing' || maintenanceBusy.has(printer.id); });
+        } catch (error) {
+          status.textContent = `${printer.name} is niet bereikbaar: ${error.message}`;
+          buttons.forEach(button => { button.disabled = true; });
+        }
+      }));
+    } finally { maintenancePolling = false; }
+  }
+
+  async function runMaintenanceCommand(printer, action, section) {
+    const command = maintenanceCommands[action];
+    if (!command || demoMode || maintenanceBusy.has(printer.id)) return;
+    if (!window.confirm(command.prompt)) return;
+    const status = section.querySelector('.maintenance-status');
+    const buttons = [...section.querySelectorAll('[data-maintenance-action]')];
+    try {
+      const endpoint = currentPrinterEndpoint(printer, section);
+      maintenanceBusy.add(printer.id);
+      buttons.forEach(button => { button.disabled = true; });
+      status.textContent = 'Opdracht wordt verstuurd…';
+      await requestPrinterJson(`${endpoint}/printer/gcode/script`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ script: command.script }),
+        timeout: action === 'bed-mesh' ? 120000 : 20000
+      });
+      status.textContent = action.startsWith('restart-') ? 'Herstartopdracht verstuurd.' : 'Opdracht uitgevoerd.';
+    } catch (error) {
+      status.textContent = `Opdracht niet uitgevoerd: ${error.message}`;
+    } finally {
+      maintenanceBusy.delete(printer.id);
+      setTimeout(refreshMaintenanceStatuses, 1000);
+    }
   }
 
   function settingsFromForm() {
@@ -155,6 +286,7 @@
     const current = settingsFromForm();
     localStorage.setItem(CONFIG_KEY, JSON.stringify([...current, printer]));
     renderSettings();
+    refreshMaintenanceStatuses();
     const inputs = [...container.querySelectorAll('.name-input')];
     inputs.at(-1)?.focus();
     inputs.at(-1)?.select();
