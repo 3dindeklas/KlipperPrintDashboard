@@ -117,6 +117,17 @@ dialog { color: var(--ink); font: inherit; }
 .discovery-result strong { display: block; color: var(--plum-dark); }
 .discovery-result span { color: var(--muted); font-size: .82rem; }
 .discovery-result .button { min-height: 40px; padding: 8px 12px; font-size: .82rem; }
+.history-panel { padding: 16px; margin-bottom: 20px; border: 1px solid var(--line); border-radius: 14px; background: var(--paper); }
+.history-panel p { margin: 4px 0 0; color: var(--muted); font-size: .86rem; }
+.history-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 160px)); gap: 10px; margin: 14px 0; }
+.history-stats > div { padding: 12px; border-radius: 10px; background: #fff; text-align: center; }
+.history-stats strong, .history-stats span { display: block; }
+.history-stats strong { color: var(--plum); font-size: 1.8rem; line-height: 1; }
+.history-stats span { margin-top: 5px; color: var(--muted); font-size: .8rem; }
+.history-recent { display: grid; gap: 4px; }
+.history-recent p { margin: 0; }
+.history-row { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; border-top: 1px solid var(--line); color: var(--ink); font-size: .84rem; }
+.history-row time { color: var(--muted); white-space: nowrap; }
 .maintenance-panel { padding: 18px; margin-top: 18px; border: 1px solid var(--line); border-radius: 14px; background: var(--paper); }
 .maintenance-panel h3 { margin-bottom: 6px; color: var(--plum-dark); font-size: 1.1rem; }
 .maintenance-status { min-height: 1.4em; margin: 8px 0 0; color: var(--muted); font-size: .88rem; }
