@@ -3,14 +3,15 @@
 
   const CONFIG_KEY = 'klipperPrintDashboard.printers.v1';
   const GCODE_DIRECTORY = '3dindeklas/fluidd_dashboard/letters';
+  const legacyPorts = [7125, 7126, 7127, 7128];
   const params = new URLSearchParams(window.location.search);
   const isGitHubPages = window.location.hostname.endsWith('.github.io');
   const demoMode = params.get('demo') === '1' || isGitHubPages;
   const printerDefinitions = [
-    { id: 'black', name: 'Zwart', port: 7125, color: '#252a29' },
-    { id: 'white', name: 'Wit', port: 7126, color: '#b9c2bd' },
-    { id: 'purple', name: 'Paars', port: 7127, color: '#7d4bb3' },
-    { id: 'printer4', name: 'Printer 4', port: 7128, color: '#5ab3b1' }
+    { id: 'black', name: 'Zwart', port: 8401, color: '#252a29' },
+    { id: 'white', name: 'Wit', port: 8301, color: '#b9c2bd' },
+    { id: 'purple', name: 'Paars', port: 8201, color: '#7d4bb3' },
+    { id: 'printer4', name: 'Printer 4', port: 8101, color: '#5ab3b1' }
   ];
   const fakePrinters = {
     black: { state: 'standby', extruder: 24, extruderTarget: 0, bed: 23, bedTarget: 0 },
@@ -45,7 +46,7 @@
         id: typeof item.id === 'string' && item.id ? item.id : `printer-${index + 1}`,
         name: typeof item.name === 'string' && item.name.trim() ? item.name.trim() : (printerDefinitions.find(printer => printer.id === item.id)?.name || `Printer ${index + 1}`),
         host: validHost(item.host) ? item.host : (window.location.hostname || 'localhost'),
-        port: validPort(item.port) ? Number(item.port) : (printerDefinitions.find(printer => printer.id === item.id)?.port || 7125 + index),
+        port: legacyPorts.includes(Number(item.port)) && Number(item.port) === legacyPorts[index] ? [8401, 8301, 8201, 8101][index] : (validPort(item.port) ? Number(item.port) : (printerDefinitions.find(printer => printer.id === item.id)?.port || [8401, 8301, 8201, 8101][index] || 8401)),
         color: /^#[\da-f]{6}$/i.test(item.color || '') ? item.color : (printerDefinitions.find(printer => printer.id === item.id)?.color || '#4c325b')
       }));
     } catch {
