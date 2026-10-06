@@ -23,7 +23,7 @@
 }
 
 * { box-sizing: border-box; }
-body { margin: 0; min-height: 100vh; padding: max(14px, env(safe-area-inset-top)) 14px max(22px, env(safe-area-inset-bottom)); }
+body { margin: 0; min-height: 100vh; padding: 0 14px max(22px, env(safe-area-inset-bottom)); }
 button, input { font: inherit; }
 button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
 button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid #174d49; outline-offset: 3px; }
