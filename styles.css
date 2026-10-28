@@ -66,10 +66,10 @@ h2 { margin-bottom: 10px; font-size: clamp(1.25rem, 3vw, 1.6rem); }
 .mode-badge.live { background: #fff1dc; color: #714c00; }
 .steps { padding: 0; margin: 0; }
 .steps h2 { margin: 0 0 14px; }
-.steps ol { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 0; padding: 0; list-style: none; }
-.steps li { display: flex; align-items: flex-start; gap: 10px; color: var(--muted); font-size: .9rem; line-height: 1.4; }
+.steps ol { display: grid; grid-template-columns: 1fr; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.steps li { display: flex; align-items: center; gap: 12px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 14px; background: #fff; color: var(--muted); font-size: .9rem; line-height: 1.4; }
 .steps strong { color: var(--ink); }
-.step-number { display: grid; flex: 0 0 29px; width: 29px; height: 29px; place-items: center; border-radius: 50%; background: var(--yellow); color: #453714; font-weight: 700; }
+.step-number { display: grid; flex: 0 0 36px; width: 36px; height: 36px; place-items: center; border-radius: 50%; background: var(--yellow); color: #453714; font-size: 1rem; font-weight: 700; }
 .printer-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 235px), 1fr)); gap: 14px; }
 .printer-card { min-width: 0; padding: 20px; border: 3px solid var(--printer-color); border-top-width: 9px; border-radius: 18px; background: #fff; box-shadow: 0 7px 20px #26192e10; }
 .printer-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
