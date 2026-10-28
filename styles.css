@@ -33,13 +33,18 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid 
 .site-header::after { display: block; height: 4px; background: var(--yellow); content: ''; }
 @media screen and (orientation: landscape) and (min-width: 768px) and (max-width: 1366px) {
   .site-header { padding-top: env(safe-area-inset-top); }
+  .header-inner { min-height: 66px; gap: 12px; }
+  .brand { flex-basis: 54px; height: 52px; padding-right: 8px; }
+  .brand img { width: 44px; height: 52px; }
+  .header-title span { font-size: .55rem; }
+  .header-title strong { font-size: 1.05rem; }
 }
-.header-inner { display: flex; width: min(100% - 32px, 1000px); min-height: 92px; align-items: center; gap: 18px; margin: 0 auto; }
-.brand { display: flex; flex: 0 0 74px; height: 72px; align-items: center; justify-content: center; padding-right: 12px; border-right: 1px solid #ffffff55; }
-.brand img { display: block; width: 62px; height: 72px; object-fit: contain; }
+.header-inner { display: flex; width: min(100% - 32px, 1000px); min-height: 72px; align-items: center; gap: 14px; margin: 0 auto; }
+.brand { display: flex; flex: 0 0 60px; height: 58px; align-items: center; justify-content: center; padding-right: 10px; border-right: 1px solid #ffffff55; }
+.brand img { display: block; width: 50px; height: 58px; object-fit: contain; }
 .header-title { display: grid; gap: 2px; margin-right: auto; line-height: 1.2; }
-.header-title span { font-size: .7rem; font-weight: 700; letter-spacing: .11em; }
-.header-title strong { font-size: clamp(1.1rem, 3vw, 1.45rem); font-weight: 700; }
+.header-title span { font-size: .6rem; font-weight: 700; letter-spacing: .1em; }
+.header-title strong { font-size: clamp(1rem, 2.5vw, 1.25rem); font-weight: 700; }
 .header-link { padding: 9px 13px; border: 1px solid #ffffff91; border-radius: 7px; color: #fff; font-size: .88rem; font-weight: 700; text-decoration: none; white-space: nowrap; }
 .header-link:hover { background: #ffffff1a; }
 .hero { padding: clamp(20px, 5vw, 34px); margin-bottom: 16px; text-align: center; background: linear-gradient(145deg, #fff 40%, #eee9f2 100%); }
