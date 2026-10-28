@@ -34,6 +34,10 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid 
 @media screen and (orientation: landscape) and (min-width: 768px) and (max-width: 1366px) {
   body { padding-bottom: max(8px, env(safe-area-inset-bottom)); }
   .site-header { padding-top: env(safe-area-inset-top); }
+  .intro-panel { padding-top: 14px; padding-bottom: 14px; }
+  .intro-panel h1 { margin-bottom: 6px; }
+  .intro-panel .intro-copy { line-height: 1.35; }
+  .intro-panel .mode-badge { margin-top: 8px; }
   .header-inner { min-height: 66px; gap: 12px; }
   .brand { flex-basis: 54px; height: 52px; padding-right: 8px; }
   .brand img { width: 44px; height: 52px; }
