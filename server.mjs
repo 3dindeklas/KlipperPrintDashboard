@@ -56,7 +56,9 @@ function sanitizePrinters(printers) {
     name: String(printer?.name || `Printer ${index + 1}`).trim().slice(0, 80),
     host: String(printer?.host || '').trim().slice(0, 253),
     port: Number(printer?.port),
-    color: /^#[\da-f]{6}$/i.test(String(printer?.color || '')) ? String(printer.color) : '#4c325b'
+    color: /^#[\da-f]{6}$/i.test(String(printer?.color || '')) ? String(printer.color) : '#4c325b',
+    colorSecondary: /^#[\da-f]{6}$/i.test(String(printer?.colorSecondary || '')) ? String(printer.colorSecondary) : (String(printer?.color || '') || '#4c325b'),
+    colorMode: printer?.colorMode === 'duo' ? 'duo' : 'single'
   })).filter(printer => printer.name && /^[a-zA-Z0-9.-]{1,253}$/.test(printer.host) && Number.isInteger(printer.port) && printer.port >= 1 && printer.port <= 65535);
 }
 
