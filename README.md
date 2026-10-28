@@ -31,7 +31,7 @@ Op GitHub Pages staat de demomodus altijd aan. Daardoor kan de publieke demo noo
 
 ## Printeradressen beheren
 
-Open `admin.html` of tik op **Printerbeheer** onder aan het dashboard. Stel bij het eerste gebruik een beheercode van 4 tot 8 cijfers in. In Printerbeheer kun je lokale Moonrakers zoeken, printers toevoegen en verwijderen, printernamen aanpassen en per printer het IP-adres of de netwerknaam, de Moonraker-poort en de filamentkleur instellen. De standaardpoorten zijn `8401`, `8301`, `8201` en `8101`. Sla de wijzigingen op om de nieuwe printerlijst op het dashboard te tonen.
+Open `admin.html` of tik op **Printerbeheer** onder aan het dashboard. Stel bij het eerste gebruik een beheercode van 4 tot 8 cijfers in. In Printerbeheer kun je lokale Moonrakers zoeken, printers toevoegen en verwijderen, printernamen aanpassen en per printer het IP-adres of de netwerknaam, de Moonraker-poort en de filamentkleur instellen. Kies bij filamentkleur tussen één kleur of duo-tone met twee kleurvakjes; duo-tone verschijnt als gradient in de printerrand. De standaardpoorten zijn `8401`, `8301`, `8201` en `8101`. Sla de wijzigingen op om de nieuwe printerlijst op het dashboard te tonen.
 
 In de Docker-versie worden de printerinstellingen, beheercode en printgeschiedenis centraal opgeslagen in de persistente map `data/` op de Raspberry Pi. Daardoor gebruiken meerdere iPads dezelfde printernamen, endpoints, filamentkleuren en teller. De adminpagina heeft een **Uitloggen**-knop; deelnemers zien alleen het dashboard.
 
