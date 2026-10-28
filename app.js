@@ -86,6 +86,13 @@
     const date = new Date(value);
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
   }
+  function updateModeBadge() {
+    if (!modeBadge) return;
+    const today = dateKey();
+    const count = historyEntries.filter(entry => dateKey(entry.printedAt) === today).length;
+    modeBadge.textContent = `${demoMode ? 'Demo · ' : ''}Vandaag geprint: ${count} ${count === 1 ? 'letter' : 'letters'}`;
+    modeBadge.hidden = false;
+  }
 
   function readLocalHistory() {
     try {
@@ -95,7 +102,7 @@
   }
 
   async function loadHistory() {
-    if (demoMode) { historyEntries = readLocalHistory(); return; }
+    if (demoMode) { historyEntries = readLocalHistory(); updateModeBadge(); return; }
     try {
       const response = await fetch(HISTORY_API, { headers: { Accept: 'application/json' } });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -104,20 +111,21 @@
     } catch {
       historyEntries = readLocalHistory();
     }
+    updateModeBadge();
   }
 
   function recordPrint(printer, letter) {
     const entry = { id: `print-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, printerId: printer.id, printerName: printer.name, letter, printedAt: new Date().toISOString() };
     historyEntries = [entry, ...historyEntries].slice(0, 2000);
     localStorage.setItem(HISTORY_KEY, JSON.stringify(historyEntries));
+    updateModeBadge();
     if (!demoMode) {
       fetch(HISTORY_API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(entry) }).catch(() => {});
     }
   }
 
   let printers = [];
-  if (demoMode) modeBadge.textContent = 'Demomodus · geen printerverbinding nodig';
-  else modeBadge.hidden = true;
+  modeBadge.hidden = true;
 
   function printerUrl(printer) {
     return `http://${printer.host}:${printer.port}`;
