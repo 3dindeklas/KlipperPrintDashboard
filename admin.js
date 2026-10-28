@@ -73,7 +73,14 @@
       const response = await fetch(CONFIG_API, { headers: { Accept: 'application/json' } });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
-      printerSettings = Array.isArray(data.printers) ? normalizeSettings(data.printers) : defaultSettings();
+      if (Array.isArray(data.printers)) {
+        printerSettings = normalizeSettings(data.printers);
+      } else {
+        printerSettings = readLocalSettings();
+        if (localStorage.getItem(CONFIG_KEY)) {
+          try { await persistSettings(printerSettings); } catch { /* laat de gebruiker handmatig opslaan */ }
+        }
+      }
       return printerSettings;
     } catch {
       printerSettings = readLocalSettings();
