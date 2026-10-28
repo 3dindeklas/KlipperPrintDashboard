@@ -4,8 +4,11 @@
   const CONFIG_KEY = 'klipperPrintDashboard.printers.v1';
   const HISTORY_KEY = 'klipperPrintDashboard.printHistory.v1';
   const HISTORY_API = '/api/print-history';
+  const CONFIG_API = '/api/printer-config';
+  const AUTH_API = '/api/admin-auth';
   const PIN_KEY = 'klipperPrintDashboard.adminPin.v1';
   const SESSION_KEY = 'klipperPrintDashboard.adminUnlocked';
+  const SESSION_TOKEN_KEY = 'klipperPrintDashboard.adminToken';
   const params = new URLSearchParams(window.location.search);
   const demoMode = params.get('demo') === '1' || window.location.hostname.endsWith('.github.io');
   const maintenanceBusy = new Set();
@@ -26,29 +29,137 @@
   const authNotice = document.getElementById('authNotice');
   const settingsForm = document.getElementById('settingsForm');
   const saveNotice = document.getElementById('saveNotice');
-  let isFirstRun = !localStorage.getItem(PIN_KEY);
+  let isFirstRun = true;
+  let authToken = sessionStorage.getItem(SESSION_TOKEN_KEY) || '';
+  let printerSettings = null;
   let historyEntries = [];
 
   function newId() {
     return `printer-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
   }
 
-  function getSettings() {
+  function defaultSettings() {
+    return definitions.map(item => ({ ...item }));
+  }
+
+  function normalizeSettings(saved) {
+    if (!Array.isArray(saved)) return defaultSettings();
+    return saved.filter(item => item && typeof item === 'object').map((item, index) => ({
+      id: typeof item.id === 'string' && item.id ? item.id : newId(),
+      name: typeof item.name === 'string' && item.name.trim() ? item.name.trim() : (definitions.find(definition => definition.id === item.id)?.name || `Printer ${index + 1}`),
+      host: typeof item.host === 'string' && item.host ? item.host : (window.location.hostname || 'localhost'),
+      port: legacyPorts.includes(Number(item.port)) && Number(item.port) === legacyPorts[index] ? standardPorts[index] : (Number(item.port) || definitions.find(definition => definition.id === item.id)?.port || standardPorts[index] || 8401),
+      color: /^#[\da-f]{6}$/i.test(item.color || '') ? item.color : (definitions.find(definition => definition.id === item.id)?.color || '#4c325b'),
+      colorSecondary: /^#[\da-f]{6}$/i.test(item.colorSecondary || '') ? item.colorSecondary : (item.color || '#4c325b'),
+      colorMode: item.colorMode === 'duo' ? 'duo' : 'single'
+    }));
+  }
+
+  function printerGradient(printer) {
+    if (printer.colorMode === 'duo' && /^#[\da-f]{6}$/i.test(printer.colorSecondary || '')) {
+      return `linear-gradient(135deg, ${printer.color}, ${printer.colorSecondary})`;
+    }
+    return printer.color;
+  }
+
+  function readLocalSettings() {
     try {
       const saved = JSON.parse(localStorage.getItem(CONFIG_KEY) || 'null');
-      if (!Array.isArray(saved)) return definitions.map(item => ({ ...item }));
-      return saved.filter(item => item && typeof item === 'object').map((item, index) => ({
-        id: typeof item.id === 'string' && item.id ? item.id : newId(),
-        name: typeof item.name === 'string' && item.name.trim() ? item.name : (definitions.find(definition => definition.id === item.id)?.name || `Printer ${index + 1}`),
-        host: typeof item.host === 'string' && item.host ? item.host : (window.location.hostname || 'localhost'),
-        port: legacyPorts.includes(Number(item.port)) && Number(item.port) === legacyPorts[index] ? standardPorts[index] : (Number(item.port) || definitions.find(definition => definition.id === item.id)?.port || standardPorts[index] || 8401),
-        color: /^#[\da-f]{6}$/i.test(item.color || '') ? item.color : (definitions.find(definition => definition.id === item.id)?.color || '#4c325b')
-      }));
-    } catch { return definitions.map(item => ({ ...item })); }
+      return Array.isArray(saved) ? normalizeSettings(saved) : defaultSettings();
+    } catch { return defaultSettings(); }
+  }
+
+  function getSettings() {
+    return Array.isArray(printerSettings) ? printerSettings : defaultSettings();
+  }
+
+  async function loadSettings() {
+    if (demoMode) {
+      printerSettings = readLocalSettings();
+      return printerSettings;
+    }
+    try {
+      const response = await fetch(CONFIG_API, { headers: { Accept: 'application/json' } });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json();
+      if (Array.isArray(data.printers)) {
+        printerSettings = normalizeSettings(data.printers);
+      } else {
+        printerSettings = readLocalSettings();
+        if (localStorage.getItem(CONFIG_KEY)) {
+          try { await persistSettings(printerSettings); } catch { /* laat de gebruiker handmatig opslaan */ }
+        }
+      }
+      return printerSettings;
+    } catch {
+      printerSettings = readLocalSettings();
+      saveNotice.textContent = 'Centrale printeropslag is niet bereikbaar; lokale gegevens worden getoond.';
+      return printerSettings;
+    }
+  }
+
+  async function persistSettings(values) {
+    if (demoMode) {
+      localStorage.setItem(CONFIG_KEY, JSON.stringify(values));
+      printerSettings = values;
+      return;
+    }
+    const response = await fetch(CONFIG_API, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
+      body: JSON.stringify({ printers: values })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+    printerSettings = values;
+  }
+
+  async function requestAuth(action, pin) {
+    const response = await fetch(AUTH_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action, pin })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+    if (!data.ok || !data.token) throw new Error('De beheercode klopt niet.');
+    authToken = data.token;
+    sessionStorage.setItem(SESSION_TOKEN_KEY, authToken);
+  }
+
+  async function initializeAuth() {
+    if (demoMode) {
+      if (sessionStorage.getItem(SESSION_KEY) === 'yes') {
+        await unlock();
+        return;
+      }
+      isFirstRun = !localStorage.getItem(PIN_KEY);
+      applyAuthMode();
+      return;
+    }
+    try {
+      const headers = { Accept: 'application/json' };
+      if (authToken) headers.Authorization = `Bearer ${authToken}`;
+      const response = await fetch(AUTH_API, { headers });
+      const data = await response.json();
+      if (authToken && data.authorized) {
+        await unlock();
+        return;
+      }
+      sessionStorage.removeItem(SESSION_KEY);
+      sessionStorage.removeItem(SESSION_TOKEN_KEY);
+      authToken = '';
+      isFirstRun = !data.configured;
+      applyAuthMode();
+    } catch {
+      isFirstRun = false;
+      applyAuthMode();
+      authNotice.textContent = 'Centrale beheeropslag is niet bereikbaar. Start de dashboardserver opnieuw.';
+      document.getElementById('authSubmit').disabled = true;
+    }
   }
 
   function applyAuthMode() {
-    isFirstRun = !localStorage.getItem(PIN_KEY);
     document.getElementById('authTitle').textContent = isFirstRun ? 'Beheercode instellen' : 'Beheer openen';
     document.getElementById('authDescription').textContent = isFirstRun
       ? 'Stel een code van 4 tot 8 cijfers in voordat je de printerinstellingen wijzigt.'
@@ -76,6 +187,43 @@
     return { wrapper, input };
   }
 
+  function createColorField(printer) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'field';
+    const label = document.createElement('label');
+    label.textContent = 'Filamentkleur';
+    const controls = document.createElement('div');
+    controls.className = 'color-controls';
+    const mode = document.createElement('select');
+    mode.className = 'color-mode-input';
+    mode.setAttribute('aria-label', `Kleurtype voor ${printer.name}`);
+    [['single', 'Enkele kleur'], ['duo', 'Duo-tone']].forEach(([value, text]) => {
+      const option = document.createElement('option');
+      option.value = value;
+      option.textContent = text;
+      mode.append(option);
+    });
+    mode.value = printer.colorMode === 'duo' ? 'duo' : 'single';
+    const swatches = document.createElement('div');
+    swatches.className = 'color-swatches';
+    const primary = document.createElement('input');
+    primary.type = 'color';
+    primary.className = 'color-input';
+    primary.value = printer.color;
+    primary.setAttribute('aria-label', `Eerste filamentkleur voor ${printer.name}`);
+    const secondary = document.createElement('input');
+    secondary.type = 'color';
+    secondary.className = 'color-secondary-input';
+    secondary.value = printer.colorSecondary || printer.color;
+    secondary.setAttribute('aria-label', `Tweede filamentkleur voor ${printer.name}`);
+    secondary.disabled = mode.value !== 'duo';
+    swatches.append(primary, secondary);
+    controls.append(mode, swatches);
+    wrapper.append(label, controls);
+    mode.addEventListener('change', () => { secondary.disabled = mode.value !== 'duo'; });
+    return { wrapper, primary, secondary, mode };
+  }
+
   function renderSettings() {
     const container = document.getElementById('printerSettings');
     container.replaceChildren();
@@ -83,6 +231,7 @@
       const section = document.createElement('section');
       section.className = 'admin-printer';
       section.style.setProperty('--printer-color', printer.color);
+      section.style.setProperty('--printer-gradient', printerGradient(printer));
       section.dataset.printerId = printer.id;
       const heading = document.createElement('div');
       heading.className = 'admin-printer-heading';
@@ -105,7 +254,7 @@
       const name = createField('Printernaam', 'text', 'name-input', printer.name, { maxlength: '48', required: '' });
       const host = createField('IP-adres of netwerknaam', 'text', 'host-input', printer.host, { inputmode: 'url', autocomplete: 'off', placeholder: 'bijvoorbeeld 192.168.1.20', required: '' });
       const port = createField('Moonraker-poort', 'number', 'port-input', printer.port, { inputmode: 'numeric', min: '1', max: '65535', required: '' });
-      const color = createField('Filamentkleur', 'color', 'color-input', printer.color, { 'aria-label': `Filamentkleur voor ${printer.name}` });
+      const color = createColorField(printer);
       const fields = document.createElement('div');
       fields.className = 'field-grid';
       fields.append(name.wrapper, host.wrapper, port.wrapper, color.wrapper);
@@ -137,10 +286,11 @@
     document.getElementById('emptyPrinters').hidden = container.childElementCount > 0;
   }
 
-  function unlock() {
+  async function unlock() {
     authCard.hidden = true;
     settingsPanel.hidden = false;
     sessionStorage.setItem(SESSION_KEY, 'yes');
+    await loadSettings();
     renderSettings();
     loadHistory();
     refreshMaintenanceStatuses();
@@ -199,7 +349,7 @@
     localStorage.removeItem(HISTORY_KEY);
     historyEntries = [];
     if (!demoMode) {
-      try { await fetch(HISTORY_API, { method: 'DELETE' }); } catch { /* local fallback is already reset */ }
+      try { await fetch(HISTORY_API, { method: 'DELETE', headers: { Authorization: `Bearer ${authToken}` } }); } catch { /* local fallback is already reset */ }
     }
     renderHistory();
   }
@@ -273,7 +423,7 @@
       return;
     }
     const printer = { id: newId(), name: discoveryName(item.version, item.port), host: item.host, port: item.port, color: '#4c325b' };
-    localStorage.setItem(CONFIG_KEY, JSON.stringify([...current, printer]));
+    printerSettings = [...current, printer];
     renderSettings();
     refreshMaintenanceStatuses();
     saveNotice.textContent = `${printer.name} toegevoegd. Pas eventueel de naam en filamentkleur aan en sla op.`;
@@ -392,41 +542,53 @@
       name: section.querySelector('.name-input').value.trim(),
       host: section.querySelector('.host-input').value.trim(),
       port: Number(section.querySelector('.port-input').value),
-      color: section.querySelector('.color-input').value
+      color: section.querySelector('.color-input').value,
+      colorSecondary: section.querySelector('.color-secondary-input').value,
+      colorMode: section.querySelector('.color-mode-input').value
     }));
   }
 
-  authForm.addEventListener('submit', event => {
+  authForm.addEventListener('submit', async event => {
     event.preventDefault();
     authNotice.textContent = '';
     const code = pinInput.value;
+    const submit = document.getElementById('authSubmit');
     if (!/^\d{4,8}$/.test(code)) {
       authNotice.textContent = 'Gebruik een code van 4 tot 8 cijfers.';
       return;
     }
-    if (isFirstRun) {
-      if (code !== confirmPinInput.value) {
-        authNotice.textContent = 'De codes zijn niet hetzelfde.';
-        return;
+    if (isFirstRun && code !== confirmPinInput.value) {
+      authNotice.textContent = 'De codes zijn niet hetzelfde.';
+      return;
+    }
+    submit.disabled = true;
+    try {
+      if (demoMode) {
+        if (isFirstRun) localStorage.setItem(PIN_KEY, code);
+        else if (code !== localStorage.getItem(PIN_KEY)) throw new Error('Deze code klopt niet. Probeer het opnieuw.');
+      } else {
+        await requestAuth(isFirstRun ? 'setup' : 'login', code);
       }
-      localStorage.setItem(PIN_KEY, code);
-      unlock();
-      return;
-    }
-    if (code !== localStorage.getItem(PIN_KEY)) {
-      authNotice.textContent = 'Deze code klopt niet. Probeer het opnieuw.';
+      await unlock();
+      pinInput.value = '';
+      confirmPinInput.value = '';
+    } catch (error) {
+      authNotice.textContent = error.message || 'Inloggen is niet gelukt.';
+      if (error.message.includes('already configured')) {
+        await initializeAuth();
+      }
       pinInput.select();
-      return;
+    } finally {
+      submit.disabled = false;
     }
-    unlock();
   });
 
   document.getElementById('addPrinter').addEventListener('click', () => {
     const container = document.getElementById('printerSettings');
     const count = container.childElementCount + 1;
-    const printer = { id: newId(), name: `Printer ${count}`, host: window.location.hostname || 'localhost', port: 7124 + count, color: '#4c325b' };
+    const printer = { id: newId(), name: `Printer ${count}`, host: window.location.hostname || 'localhost', port: standardPorts[count - 1] || 8401, color: '#4c325b', colorSecondary: '#5ab3b1', colorMode: 'single' };
     const current = settingsFromForm();
-    localStorage.setItem(CONFIG_KEY, JSON.stringify([...current, printer]));
+    printerSettings = [...current, printer];
     renderSettings();
     refreshMaintenanceStatuses();
     const inputs = [...container.querySelectorAll('.name-input')];
@@ -447,10 +609,19 @@
       section.querySelector('.button-delete').setAttribute('aria-label', `Verwijder ${name}`);
       section.querySelector('.color-input').setAttribute('aria-label', `Filamentkleur voor ${name}`);
     }
-    if (event.target.matches('.color-input')) section.style.setProperty('--printer-color', event.target.value);
+    if (event.target.matches('.color-input, .color-secondary-input, .color-mode-input')) {
+      const color = {
+        color: section.querySelector('.color-input').value,
+        colorSecondary: section.querySelector('.color-secondary-input').value,
+        colorMode: section.querySelector('.color-mode-input').value
+      };
+      section.style.setProperty('--printer-color', color.color);
+      section.style.setProperty('--printer-gradient', printerGradient(color));
+      section.querySelector('.color-secondary-input').disabled = color.colorMode !== 'duo';
+    }
   });
 
-  settingsForm.addEventListener('submit', event => {
+  settingsForm.addEventListener('submit', async event => {
     event.preventDefault();
     saveNotice.textContent = '';
     const values = [];
@@ -471,25 +642,47 @@
         return;
       }
       if (!Number.isInteger(port) || port < 1 || port > 65535) { portInput.reportValidity(); return; }
-      values.push({ id, name, host, port, color: colorInput.value });
+      values.push({ id, name, host, port, color: colorInput.value, colorSecondary: section.querySelector('.color-secondary-input').value, colorMode: section.querySelector('.color-mode-input').value });
     }
-    localStorage.setItem(CONFIG_KEY, JSON.stringify(values));
-    saveNotice.textContent = 'Printers opgeslagen. Het dashboard wordt geopend.';
-    const demoQuery = new URLSearchParams(window.location.search).get('demo') === '1' ? '?demo=1' : '';
-    setTimeout(() => { window.location.href = `index.html${demoQuery}`; }, 450);
+    const saveButton = settingsForm.querySelector('button[type="submit"]');
+    saveButton.disabled = true;
+    try {
+      await persistSettings(values);
+      saveNotice.textContent = 'Printers opgeslagen op de Raspberry Pi. Het dashboard wordt geopend.';
+      const demoQuery = new URLSearchParams(window.location.search).get('demo') === '1' ? '?demo=1' : '';
+      setTimeout(() => { window.location.href = `index.html${demoQuery}`; }, 450);
+    } catch (error) {
+      saveNotice.textContent = `Opslaan op de Raspberry Pi is niet gelukt: ${error.message}`;
+    } finally {
+      saveButton.disabled = false;
+    }
   });
 
   document.getElementById('resetEndpoints').addEventListener('click', () => {
     if (!window.confirm('De standaardprinters en instellingen herstellen?')) return;
-    localStorage.removeItem(CONFIG_KEY);
+    printerSettings = defaultSettings();
     saveNotice.textContent = 'Standaardprinters hersteld. Sla op om terug te gaan naar het dashboard.';
     renderSettings();
   });
+
+  function logout() {
+    sessionStorage.removeItem(SESSION_KEY);
+    sessionStorage.removeItem(SESSION_TOKEN_KEY);
+    authToken = '';
+    settingsPanel.hidden = true;
+    authCard.hidden = false;
+    pinInput.value = '';
+    confirmPinInput.value = '';
+    authNotice.textContent = 'Je bent uitgelogd.';
+    applyAuthMode();
+    pinInput.focus();
+  }
+
+  document.getElementById('logoutButton').addEventListener('click', logout);
 
   const demoQuery = new URLSearchParams(window.location.search).get('demo') === '1' ? '?demo=1' : '';
   const dashboardLink = document.querySelector('.header-link');
   if (dashboardLink) dashboardLink.href = `index.html${demoQuery}`;
 
-  if (sessionStorage.getItem(SESSION_KEY) === 'yes') unlock();
-  else applyAuthMode();
+  initializeAuth();
 })();

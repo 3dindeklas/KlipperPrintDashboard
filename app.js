@@ -4,6 +4,7 @@
   const CONFIG_KEY = 'klipperPrintDashboard.printers.v1';
   const HISTORY_KEY = 'klipperPrintDashboard.printHistory.v1';
   const HISTORY_API = '/api/print-history';
+  const CONFIG_API = '/api/printer-config';
   const GCODE_DIRECTORY = '3dindeklas/fluidd_dashboard/letters';
   const legacyPorts = [7125, 7126, 7127, 7128];
   const params = new URLSearchParams(window.location.search);
@@ -41,19 +42,43 @@
     return printerDefinitions.map(item => ({ ...item, host, port: item.port }));
   }
 
-  function loadPrinters() {
+  function normalizePrinters(saved) {
+    if (!Array.isArray(saved)) return defaultPrinters();
+    return saved.filter(item => item && typeof item === 'object').map((item, index) => ({
+      id: typeof item.id === 'string' && item.id ? item.id : `printer-${index + 1}`,
+      name: typeof item.name === 'string' && item.name.trim() ? item.name.trim() : (printerDefinitions.find(printer => printer.id === item.id)?.name || `Printer ${index + 1}`),
+      host: validHost(item.host) ? item.host : (window.location.hostname || 'localhost'),
+      port: legacyPorts.includes(Number(item.port)) && Number(item.port) === legacyPorts[index] ? [8401, 8301, 8201, 8101][index] : (validPort(item.port) ? Number(item.port) : (printerDefinitions.find(printer => printer.id === item.id)?.port || [8401, 8301, 8201, 8101][index] || 8401)),
+      color: /^#[\da-f]{6}$/i.test(item.color || '') ? item.color : (printerDefinitions.find(printer => printer.id === item.id)?.color || '#4c325b'),
+      colorSecondary: /^#[\da-f]{6}$/i.test(item.colorSecondary || '') ? item.colorSecondary : (item.color || '#4c325b'),
+      colorMode: item.colorMode === 'duo' ? 'duo' : 'single'
+    }));
+  }
+
+  function printerGradient(printer) {
+    if (printer.colorMode === 'duo' && /^#[\da-f]{6}$/i.test(printer.colorSecondary || '')) {
+      return `linear-gradient(135deg, ${printer.color}, ${printer.colorSecondary})`;
+    }
+    return printer.color;
+  }
+
+  function readLocalPrinters() {
     try {
       const saved = JSON.parse(localStorage.getItem(CONFIG_KEY) || 'null');
-      if (!Array.isArray(saved)) return defaultPrinters();
-      return saved.filter(item => item && typeof item === 'object').map((item, index) => ({
-        id: typeof item.id === 'string' && item.id ? item.id : `printer-${index + 1}`,
-        name: typeof item.name === 'string' && item.name.trim() ? item.name.trim() : (printerDefinitions.find(printer => printer.id === item.id)?.name || `Printer ${index + 1}`),
-        host: validHost(item.host) ? item.host : (window.location.hostname || 'localhost'),
-        port: legacyPorts.includes(Number(item.port)) && Number(item.port) === legacyPorts[index] ? [8401, 8301, 8201, 8101][index] : (validPort(item.port) ? Number(item.port) : (printerDefinitions.find(printer => printer.id === item.id)?.port || [8401, 8301, 8201, 8101][index] || 8401)),
-        color: /^#[\da-f]{6}$/i.test(item.color || '') ? item.color : (printerDefinitions.find(printer => printer.id === item.id)?.color || '#4c325b')
-      }));
+      return Array.isArray(saved) ? normalizePrinters(saved) : defaultPrinters();
+    } catch { return defaultPrinters(); }
+  }
+
+  async function loadPrinters() {
+    const fallback = readLocalPrinters();
+    if (demoMode) return fallback;
+    try {
+      const response = await fetch(CONFIG_API, { headers: { Accept: 'application/json' } });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json();
+      return Array.isArray(data.printers) ? normalizePrinters(data.printers) : defaultPrinters();
     } catch {
-      return defaultPrinters();
+      return fallback;
     }
   }
 
@@ -70,6 +95,13 @@
     const date = new Date(value);
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
   }
+  function updateModeBadge() {
+    if (!modeBadge) return;
+    const today = dateKey();
+    const count = historyEntries.filter(entry => dateKey(entry.printedAt) === today).length;
+    modeBadge.textContent = `${demoMode ? 'Demo · ' : ''}Vandaag geprint: ${count} ${count === 1 ? 'letter' : 'letters'}`;
+    modeBadge.hidden = false;
+  }
 
   function readLocalHistory() {
     try {
@@ -79,7 +111,7 @@
   }
 
   async function loadHistory() {
-    if (demoMode) { historyEntries = readLocalHistory(); return; }
+    if (demoMode) { historyEntries = readLocalHistory(); updateModeBadge(); return; }
     try {
       const response = await fetch(HISTORY_API, { headers: { Accept: 'application/json' } });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -88,20 +120,21 @@
     } catch {
       historyEntries = readLocalHistory();
     }
+    updateModeBadge();
   }
 
   function recordPrint(printer, letter) {
     const entry = { id: `print-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, printerId: printer.id, printerName: printer.name, letter, printedAt: new Date().toISOString() };
     historyEntries = [entry, ...historyEntries].slice(0, 2000);
     localStorage.setItem(HISTORY_KEY, JSON.stringify(historyEntries));
+    updateModeBadge();
     if (!demoMode) {
       fetch(HISTORY_API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(entry) }).catch(() => {});
     }
   }
 
-  let printers = loadPrinters();
-  modeBadge.textContent = demoMode ? 'Demomodus · geen printerverbinding nodig' : 'Live · printerstatus wordt opgehaald';
-  if (!demoMode) modeBadge.classList.add('live');
+  let printers = [];
+  modeBadge.hidden = true;
 
   function printerUrl(printer) {
     return `http://${printer.host}:${printer.port}`;
@@ -111,7 +144,8 @@
     const card = document.createElement('article');
     card.className = 'printer-card';
     card.style.setProperty('--printer-color', printer.color);
-    card.innerHTML = `<div class="printer-top"><h2 class="printer-name"></h2></div><p class="printer-state"><span class="state-dot" aria-hidden="true"></span><span class="state-label">Status ophalen…</span></p><div class="progress-track" hidden><div class="progress-bar"></div></div><p class="printer-detail"></p><div class="printer-telemetry"><div class="telemetry-row"><img src="icons/extruder.svg" alt=""><span>Nozzle</span><strong class="extruder-temp">— / — °C</strong></div><div class="telemetry-row"><img src="icons/heated-bed.svg" alt=""><span>Printbed</span><strong class="bed-temp">— / — °C</strong></div></div><div class="printer-job" hidden><span class="job-filename"></span><strong class="job-eta"></strong></div><button class="button button-primary" type="button" disabled>Start mijn print</button>`;
+    card.style.setProperty('--printer-gradient', printerGradient(printer));
+    card.innerHTML = `<div class="printer-top"><h2 class="printer-name"></h2></div><p class="printer-state"><span class="state-dot" aria-hidden="true"></span><span class="state-label">Status ophalen…</span></p><div class="progress-track" hidden><div class="progress-bar"></div></div><p class="printer-detail"></p><div class="printer-telemetry"><div class="telemetry-row"><img src="icons/extruder.svg" alt=""><span>Nozzle</span><strong class="extruder-temp">— / — °C</strong></div><div class="telemetry-row"><img src="icons/heated-bed.svg" alt=""><span>Printbed</span><strong class="bed-temp">— / — °C</strong></div></div><div class="printer-job" hidden><span class="job-filename"></span><strong class="job-eta"></strong></div><button class="button button-primary" type="button" disabled>Print mijn letter</button>`;
     card.querySelector('.printer-name').textContent = printer.name;
     card.querySelector('button').addEventListener('click', () => openLetterPicker(printer));
     printer.card = card;
@@ -168,7 +202,9 @@
       card.querySelector('.job-filename').textContent = `Bestand: ${filename}`;
       card.querySelector('.job-eta').textContent = Number.isFinite(telemetry.remainingSeconds) ? `Nog ${formatDuration(telemetry.remainingSeconds)}` : 'Tijd onbekend';
     }
-    card.querySelector('button').disabled = !ready;
+    const actionButton = card.querySelector('button');
+    actionButton.disabled = !ready;
+    actionButton.textContent = state === 'printing' ? 'Bezig met printen…' : state === 'paused' ? 'Print gepauzeerd' : ready ? 'Print mijn letter' : 'Niet beschikbaar';
   }
 
   function fakeStatus(printer) {
@@ -320,9 +356,14 @@
   document.getElementById('cancelPrint').addEventListener('click', () => letterDialog.close());
   confirmPrint.addEventListener('click', startPrint);
   document.getElementById('refreshButton').addEventListener('click', () => window.location.reload());
-  renderPrinters();
-  buildLetterButtons();
-  loadHistory();
-  updateStatuses();
-  setInterval(updateStatuses, 5000);
+  async function initialise() {
+    printers = await loadPrinters();
+    renderPrinters();
+    buildLetterButtons();
+    await loadHistory();
+    await updateStatuses();
+    setInterval(updateStatuses, 5000);
+  }
+
+  initialise();
 })();

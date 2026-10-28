@@ -13,7 +13,7 @@ De letterkeuze is een groot raster met A tot en met Z. De knoppen zijn geschikt 
 
 ## iPad als app gebruiken
 
-Open de dashboard-URL in Safari op de iPad. Tik op **Deel** en kies **Zet op beginscherm**. Start het dashboard daarna via het beginscherm. De instellingen en beheercode blijven bewaard in Safari op die iPad.
+Open de dashboard-URL in Safari op de iPad. Tik op **Deel** en kies **Zet op beginscherm**. Start het dashboard daarna via het beginscherm. De beheerpagina vraagt om inloggen. Met **Uitloggen** sluit je de beheersessie op die iPad af.
 
 Het dashboard volgt de header en layout van [LayerBeacon](https://3dindeklas.github.io/LayerBeacon/): het 3Dindeklas-logo, “LEREN DOOR CREËREN”, Quicksand, pruimkleur en gele accentlijn. Het logo en de lettertypebestanden staan lokaal in de repository, zodat de vormgeving ook zonder externe fontdienst werkt.
 
@@ -31,15 +31,15 @@ Op GitHub Pages staat de demomodus altijd aan. Daardoor kan de publieke demo noo
 
 ## Printeradressen beheren
 
-Open `admin.html` of tik op **Printerbeheer** onder aan het dashboard. Stel bij het eerste gebruik een beheercode van 4 tot 8 cijfers in. In Printerbeheer kun je lokale Moonrakers zoeken, printers toevoegen en verwijderen, printernamen aanpassen en per printer het IP-adres of de netwerknaam, de Moonraker-poort en de filamentkleur instellen. De standaardpoorten zijn `8401`, `8301`, `8201` en `8101`. Sla de wijzigingen op om de nieuwe printerlijst op het dashboard te tonen.
+Open `admin.html` of tik op **Printerbeheer** onder aan het dashboard. Stel bij het eerste gebruik een beheercode van 4 tot 8 cijfers in. In Printerbeheer kun je lokale Moonrakers zoeken, printers toevoegen en verwijderen, printernamen aanpassen en per printer het IP-adres of de netwerknaam, de Moonraker-poort en de filamentkleur instellen. Kies bij filamentkleur tussen één kleur of duo-tone met twee kleurvakjes; duo-tone verschijnt als gradient in de printerrand. De standaardpoorten zijn `8401`, `8301`, `8201` en `8101`. Sla de wijzigingen op om de nieuwe printerlijst op het dashboard te tonen.
 
-De instellingen worden lokaal in de browser opgeslagen. Ze gelden dus alleen voor die iPad/browser en worden niet naar de printerhost of andere apparaten gekopieerd. Stel de printeradressen in voordat deelnemers de iPad gebruiken.
+In de Docker-versie worden de printerinstellingen, beheercode en printgeschiedenis centraal opgeslagen in de persistente map `data/` op de Raspberry Pi. Daardoor gebruiken meerdere iPads dezelfde printernamen, endpoints, filamentkleuren en teller. De adminpagina heeft een **Uitloggen**-knop; deelnemers zien alleen het dashboard.
 
 In hetzelfde beheerscherm staat de Klipper-status per printer, naast de printstatus en temperaturen. Daar staan ook onderhoudsacties: assen homen, nozzle en bed voorverwarmen, koelen, een bed mesh meten en Klipper of de firmware herstarten. Voor iedere actie vraagt het dashboard om bevestiging. Bed mesh meten voert alleen de meting uit; sla een gewenste mesh daarna volgens de werkwijze van jouw printer op.
 
-Onder **Printteller** zie je het aantal prints van vandaag, het totaal en de laatste registraties. Elke geslaagde print slaat de datum, letter en printer op. Zonder backend gebruikt de app browseropslag als terugval voor demo’s.
+Onder **Printteller** zie je het aantal prints van vandaag, het totaal en de laatste registraties. Elke geslaagde print slaat de datum, letter en printer op. In Docker staat dit in `data/print-history.json`; printerinstellingen staan in `data/printer-config.json` en de beheercode in `data/admin.json`. In demo/GitHub Pages blijft browseropslag de testterugval.
 
-De beheercode voorkomt dat deelnemers de beheerpagina per ongeluk openen. De code is geen serverbeveiliging: iemand met technische toegang tot de iPad kan lokale browserinstellingen aanpassen.
+De beheercode voorkomt dat deelnemers de beheerpagina per ongeluk openen. In Docker wordt de code als hash op de Raspberry Pi opgeslagen. Dit is bedoeld voor een vertrouwd lokaal netwerk en is geen volledige gebruikersauthenticatie.
 
 ## Installeren naast Klipper in Docker
 
@@ -54,7 +54,7 @@ docker compose up -d
 
 Open op de iPad `http://<IP-ADRES-VAN-DE-DOCKER-HOST>:8080`. Test zonder printers met `http://<IP-ADRES-VAN-DE-DOCKER-HOST>:8080/?demo=1`.
 
-De container serveert de statische bestanden en een kleine JSON-opslag voor de printteller op poort `8080`. De map `data/` blijft op de Docker-host staan, zodat de printregistratie behouden blijft wanneer de container opnieuw wordt aangemaakt. De browser van de iPad verbindt rechtstreeks met het IP-adres en de poort van elke printer. Je kunt die adressen later via de beheerpagina instellen.
+De container serveert de statische bestanden en een kleine JSON-opslag op poort `8080`. De map `data/` blijft op de Docker-host staan, zodat instellingen, beheercode en printregistratie behouden blijven wanneer de container opnieuw wordt aangemaakt. De browser van de iPad verbindt rechtstreeks met het IP-adres en de poort van elke printer. Je kunt die adressen later via de beheerpagina instellen.
 
 ### Moonraker voor live gebruik
 
@@ -91,7 +91,7 @@ Gebruik GitHub Pages alleen om de nepdata te bekijken. Voor echte printers gebru
 | `icons/` | PWA-appicoon en printer-, bed- en vernieuwiconen |
 | `manifest.json` | Instellingen voor gebruik als webapp |
 | `compose.yaml` | Dashboardserver en printteller naast Klipper in Docker |
-| `server.mjs` | Statische webserver en persistente printteller voor Docker |
+| `server.mjs` | Statische webserver, centrale printerconfiguratie, admin-login en persistente printteller voor Docker |
 | `.github/workflows/deploy-pages.yml` | Publiceren van de GitHub Pages-demo |
 
 ## Problemen oplossen
