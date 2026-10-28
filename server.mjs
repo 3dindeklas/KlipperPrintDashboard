@@ -105,7 +105,7 @@ const server = createServer(async (request, response) => {
     }
     if (request.url === '/api/admin-auth' && request.method === 'GET') {
       const admin = await readJsonFile(adminFile, {});
-      return json(response, 200, { configured: Boolean(admin.pinHash) });
+      return json(response, 200, { configured: Boolean(admin.pinHash), authorized: isAuthorized(request) });
     }
     if (request.url === '/api/admin-auth' && request.method === 'POST') {
       const payload = await body(request);
