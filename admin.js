@@ -49,8 +49,17 @@
       name: typeof item.name === 'string' && item.name.trim() ? item.name.trim() : (definitions.find(definition => definition.id === item.id)?.name || `Printer ${index + 1}`),
       host: typeof item.host === 'string' && item.host ? item.host : (window.location.hostname || 'localhost'),
       port: legacyPorts.includes(Number(item.port)) && Number(item.port) === legacyPorts[index] ? standardPorts[index] : (Number(item.port) || definitions.find(definition => definition.id === item.id)?.port || standardPorts[index] || 8401),
-      color: /^#[\da-f]{6}$/i.test(item.color || '') ? item.color : (definitions.find(definition => definition.id === item.id)?.color || '#4c325b')
+      color: /^#[\da-f]{6}$/i.test(item.color || '') ? item.color : (definitions.find(definition => definition.id === item.id)?.color || '#4c325b'),
+      colorSecondary: /^#[\da-f]{6}$/i.test(item.colorSecondary || '') ? item.colorSecondary : (item.color || '#4c325b'),
+      colorMode: item.colorMode === 'duo' ? 'duo' : 'single'
     }));
+  }
+
+  function printerGradient(printer) {
+    if (printer.colorMode === 'duo' && /^#[\da-f]{6}$/i.test(printer.colorSecondary || '')) {
+      return `linear-gradient(135deg, ${printer.color}, ${printer.colorSecondary})`;
+    }
+    return printer.color;
   }
 
   function readLocalSettings() {
@@ -178,6 +187,43 @@
     return { wrapper, input };
   }
 
+  function createColorField(printer) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'field';
+    const label = document.createElement('label');
+    label.textContent = 'Filamentkleur';
+    const controls = document.createElement('div');
+    controls.className = 'color-controls';
+    const mode = document.createElement('select');
+    mode.className = 'color-mode-input';
+    mode.setAttribute('aria-label', `Kleurtype voor ${printer.name}`);
+    [['single', 'Enkele kleur'], ['duo', 'Duo-tone']].forEach(([value, text]) => {
+      const option = document.createElement('option');
+      option.value = value;
+      option.textContent = text;
+      mode.append(option);
+    });
+    mode.value = printer.colorMode === 'duo' ? 'duo' : 'single';
+    const swatches = document.createElement('div');
+    swatches.className = 'color-swatches';
+    const primary = document.createElement('input');
+    primary.type = 'color';
+    primary.className = 'color-input';
+    primary.value = printer.color;
+    primary.setAttribute('aria-label', `Eerste filamentkleur voor ${printer.name}`);
+    const secondary = document.createElement('input');
+    secondary.type = 'color';
+    secondary.className = 'color-secondary-input';
+    secondary.value = printer.colorSecondary || printer.color;
+    secondary.setAttribute('aria-label', `Tweede filamentkleur voor ${printer.name}`);
+    secondary.disabled = mode.value !== 'duo';
+    swatches.append(primary, secondary);
+    controls.append(mode, swatches);
+    wrapper.append(label, controls);
+    mode.addEventListener('change', () => { secondary.disabled = mode.value !== 'duo'; });
+    return { wrapper, primary, secondary, mode };
+  }
+
   function renderSettings() {
     const container = document.getElementById('printerSettings');
     container.replaceChildren();
@@ -185,6 +231,7 @@
       const section = document.createElement('section');
       section.className = 'admin-printer';
       section.style.setProperty('--printer-color', printer.color);
+      section.style.setProperty('--printer-gradient', printerGradient(printer));
       section.dataset.printerId = printer.id;
       const heading = document.createElement('div');
       heading.className = 'admin-printer-heading';
@@ -207,7 +254,7 @@
       const name = createField('Printernaam', 'text', 'name-input', printer.name, { maxlength: '48', required: '' });
       const host = createField('IP-adres of netwerknaam', 'text', 'host-input', printer.host, { inputmode: 'url', autocomplete: 'off', placeholder: 'bijvoorbeeld 192.168.1.20', required: '' });
       const port = createField('Moonraker-poort', 'number', 'port-input', printer.port, { inputmode: 'numeric', min: '1', max: '65535', required: '' });
-      const color = createField('Filamentkleur', 'color', 'color-input', printer.color, { 'aria-label': `Filamentkleur voor ${printer.name}` });
+      const color = createColorField(printer);
       const fields = document.createElement('div');
       fields.className = 'field-grid';
       fields.append(name.wrapper, host.wrapper, port.wrapper, color.wrapper);
@@ -495,7 +542,9 @@
       name: section.querySelector('.name-input').value.trim(),
       host: section.querySelector('.host-input').value.trim(),
       port: Number(section.querySelector('.port-input').value),
-      color: section.querySelector('.color-input').value
+      color: section.querySelector('.color-input').value,
+      colorSecondary: section.querySelector('.color-secondary-input').value,
+      colorMode: section.querySelector('.color-mode-input').value
     }));
   }
 
@@ -537,7 +586,7 @@
   document.getElementById('addPrinter').addEventListener('click', () => {
     const container = document.getElementById('printerSettings');
     const count = container.childElementCount + 1;
-    const printer = { id: newId(), name: `Printer ${count}`, host: window.location.hostname || 'localhost', port: standardPorts[count - 1] || 8401, color: '#4c325b' };
+    const printer = { id: newId(), name: `Printer ${count}`, host: window.location.hostname || 'localhost', port: standardPorts[count - 1] || 8401, color: '#4c325b', colorSecondary: '#5ab3b1', colorMode: 'single' };
     const current = settingsFromForm();
     printerSettings = [...current, printer];
     renderSettings();
@@ -560,7 +609,16 @@
       section.querySelector('.button-delete').setAttribute('aria-label', `Verwijder ${name}`);
       section.querySelector('.color-input').setAttribute('aria-label', `Filamentkleur voor ${name}`);
     }
-    if (event.target.matches('.color-input')) section.style.setProperty('--printer-color', event.target.value);
+    if (event.target.matches('.color-input, .color-secondary-input, .color-mode-input')) {
+      const color = {
+        color: section.querySelector('.color-input').value,
+        colorSecondary: section.querySelector('.color-secondary-input').value,
+        colorMode: section.querySelector('.color-mode-input').value
+      };
+      section.style.setProperty('--printer-color', color.color);
+      section.style.setProperty('--printer-gradient', printerGradient(color));
+      section.querySelector('.color-secondary-input').disabled = color.colorMode !== 'duo';
+    }
   });
 
   settingsForm.addEventListener('submit', async event => {
@@ -584,7 +642,7 @@
         return;
       }
       if (!Number.isInteger(port) || port < 1 || port > 65535) { portInput.reportValidity(); return; }
-      values.push({ id, name, host, port, color: colorInput.value });
+      values.push({ id, name, host, port, color: colorInput.value, colorSecondary: section.querySelector('.color-secondary-input').value, colorMode: section.querySelector('.color-mode-input').value });
     }
     const saveButton = settingsForm.querySelector('button[type="submit"]');
     saveButton.disabled = true;
