@@ -2,6 +2,8 @@
   'use strict';
 
   const CONFIG_KEY = 'klipperPrintDashboard.printers.v1';
+  const HISTORY_KEY = 'klipperPrintDashboard.printHistory.v1';
+  const HISTORY_API = '/api/print-history';
   const PIN_KEY = 'klipperPrintDashboard.adminPin.v1';
   const SESSION_KEY = 'klipperPrintDashboard.adminUnlocked';
   const params = new URLSearchParams(window.location.search);
@@ -9,11 +11,13 @@
   const maintenanceBusy = new Set();
   let maintenancePolling = false;
   const definitions = [
-    { id: 'black', name: 'Zwart', host: window.location.hostname || 'localhost', port: 7125, color: '#252a29' },
-    { id: 'white', name: 'Wit', host: window.location.hostname || 'localhost', port: 7126, color: '#b9c2bd' },
-    { id: 'purple', name: 'Paars', host: window.location.hostname || 'localhost', port: 7127, color: '#7d4bb3' },
-    { id: 'printer4', name: 'Printer 4', host: window.location.hostname || 'localhost', port: 7128, color: '#5ab3b1' }
+    { id: 'black', name: 'Zwart', host: window.location.hostname || 'localhost', port: 8401, color: '#252a29' },
+    { id: 'white', name: 'Wit', host: window.location.hostname || 'localhost', port: 8301, color: '#b9c2bd' },
+    { id: 'purple', name: 'Paars', host: window.location.hostname || 'localhost', port: 8201, color: '#7d4bb3' },
+    { id: 'printer4', name: 'Printer 4', host: window.location.hostname || 'localhost', port: 8101, color: '#5ab3b1' }
   ];
+  const standardPorts = [8401, 8301, 8201, 8101];
+  const legacyPorts = [7125, 7126, 7127, 7128];
   const authCard = document.getElementById('authCard');
   const settingsPanel = document.getElementById('settingsPanel');
   const authForm = document.getElementById('authForm');
@@ -23,6 +27,7 @@
   const settingsForm = document.getElementById('settingsForm');
   const saveNotice = document.getElementById('saveNotice');
   let isFirstRun = !localStorage.getItem(PIN_KEY);
+  let historyEntries = [];
 
   function newId() {
     return `printer-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
@@ -36,7 +41,7 @@
         id: typeof item.id === 'string' && item.id ? item.id : newId(),
         name: typeof item.name === 'string' && item.name.trim() ? item.name : (definitions.find(definition => definition.id === item.id)?.name || `Printer ${index + 1}`),
         host: typeof item.host === 'string' && item.host ? item.host : (window.location.hostname || 'localhost'),
-        port: Number(item.port) || definitions.find(definition => definition.id === item.id)?.port || 7125 + index,
+        port: legacyPorts.includes(Number(item.port)) && Number(item.port) === legacyPorts[index] ? standardPorts[index] : (Number(item.port) || definitions.find(definition => definition.id === item.id)?.port || standardPorts[index] || 8401),
         color: /^#[\da-f]{6}$/i.test(item.color || '') ? item.color : (definitions.find(definition => definition.id === item.id)?.color || '#4c325b')
       }));
     } catch { return definitions.map(item => ({ ...item })); }
@@ -100,16 +105,17 @@
       const name = createField('Printernaam', 'text', 'name-input', printer.name, { maxlength: '48', required: '' });
       const host = createField('IP-adres of netwerknaam', 'text', 'host-input', printer.host, { inputmode: 'url', autocomplete: 'off', placeholder: 'bijvoorbeeld 192.168.1.20', required: '' });
       const port = createField('Moonraker-poort', 'number', 'port-input', printer.port, { inputmode: 'numeric', min: '1', max: '65535', required: '' });
-      const color = createField('Randkleur van printerblok', 'color', 'color-input', printer.color, { 'aria-label': `Randkleur voor ${printer.name}` });
+      const color = createField('Filamentkleur', 'color', 'color-input', printer.color, { 'aria-label': `Filamentkleur voor ${printer.name}` });
       const fields = document.createElement('div');
       fields.className = 'field-grid';
       fields.append(name.wrapper, host.wrapper, port.wrapper, color.wrapper);
       const maintenance = document.createElement('section');
       maintenance.className = 'maintenance-panel';
-      maintenance.innerHTML = '<h3>Onderhoud en bediening</h3><p class="admin-note">Gebruik deze opdrachten alleen als de printer vrij is. Controleer vóór homing of bedmeting of het printbed vrij is.</p><div class="maintenance-telemetry"><div class="telemetry-row"><img src="icons/extruder.svg" alt=""><span>Nozzle</span><strong class="admin-extruder-temp">— / — °C</strong></div><div class="telemetry-row"><img src="icons/heated-bed.svg" alt=""><span>Printbed</span><strong class="admin-bed-temp">— / — °C</strong></div></div><p class="maintenance-status" role="status" aria-live="polite">Printerstatus ophalen…</p><div class="maintenance-actions"></div>';
+      maintenance.innerHTML = '<h3>Onderhoud en bediening</h3><div class="maintenance-telemetry"><div class="telemetry-row"><img src="icons/extruder.svg" alt=""><span>Nozzle</span><strong class="admin-extruder-temp">— / — °C</strong></div><div class="telemetry-row"><img src="icons/heated-bed.svg" alt=""><span>Printbed</span><strong class="admin-bed-temp">— / — °C</strong></div></div><p class="maintenance-status" role="status" aria-live="polite">Printerstatus ophalen…</p><div class="maintenance-actions"></div>';
       const actionList = [
         ['home', 'Home alle assen', 'button-light'],
         ['preheat', 'Voorverwarmen', 'button-light'],
+        ['cool', 'Koelen', 'button-light'],
         ['bed-mesh', 'Bed mesh meten', 'button-light'],
         ['restart-klipper', 'Herstart Klipper', 'button-warning'],
         ['restart-firmware', 'Herstart firmware', 'button-danger']
@@ -136,8 +142,141 @@
     settingsPanel.hidden = false;
     sessionStorage.setItem(SESSION_KEY, 'yes');
     renderSettings();
+    loadHistory();
     refreshMaintenanceStatuses();
     if (!demoMode) setInterval(refreshMaintenanceStatuses, 10000);
+  }
+
+  function dateKey(value = new Date()) {
+    const date = new Date(value);
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  }
+
+  function readLocalHistory() {
+    try {
+      const value = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+      return Array.isArray(value) ? value : [];
+    } catch { return []; }
+  }
+
+  async function loadHistory() {
+    if (demoMode) { historyEntries = readLocalHistory(); renderHistory(); return; }
+    try {
+      const response = await fetch(HISTORY_API, { headers: { Accept: 'application/json' } });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json();
+      historyEntries = Array.isArray(data.entries) ? data.entries : [];
+    } catch { historyEntries = readLocalHistory(); }
+    renderHistory();
+  }
+
+  function renderHistory() {
+    const today = dateKey();
+    document.getElementById('historyToday').textContent = historyEntries.filter(entry => dateKey(entry.printedAt) === today).length;
+    document.getElementById('historyTotal').textContent = historyEntries.length;
+    const recent = document.getElementById('historyRecent');
+    recent.replaceChildren();
+    historyEntries.slice(0, 8).forEach(entry => {
+      const row = document.createElement('div');
+      row.className = 'history-row';
+      const text = document.createElement('span');
+      text.textContent = `${entry.letter || '?'} · ${entry.printerName || entry.printerId || 'Printer'}`;
+      const date = document.createElement('time');
+      date.dateTime = entry.printedAt || '';
+      date.textContent = entry.printedAt ? new Date(entry.printedAt).toLocaleString('nl-NL', { dateStyle: 'short', timeStyle: 'short' }) : '';
+      row.append(text, date);
+      recent.append(row);
+    });
+    if (!historyEntries.length) {
+      const empty = document.createElement('p');
+      empty.textContent = 'Nog geen letters geregistreerd.';
+      recent.append(empty);
+    }
+  }
+
+  async function resetHistory() {
+    if (!window.confirm('Alle geregistreerde prints wissen?')) return;
+    localStorage.removeItem(HISTORY_KEY);
+    historyEntries = [];
+    if (!demoMode) {
+      try { await fetch(HISTORY_API, { method: 'DELETE' }); } catch { /* local fallback is already reset */ }
+    }
+    renderHistory();
+  }
+
+  function discoveryName(version, port) {
+    return version ? `Moonraker ${version}` : `Moonraker localhost:${port}`;
+  }
+
+  async function discoverMoonrakers() {
+    const button = document.getElementById('discoverPrinters');
+    const results = document.getElementById('discoveryResults');
+    const hosts = [...new Set([window.location.hostname, 'localhost', '127.0.0.1'].filter(host => host && !host.endsWith('.github.io')))];
+    const ports = standardPorts;
+    results.replaceChildren();
+    button.disabled = true;
+    button.textContent = 'Zoeken…';
+    if (demoMode) {
+      const message = document.createElement('p');
+      message.textContent = 'Demomodus: lokale netwerkdetectie is uitgeschakeld.';
+      results.append(message);
+      button.disabled = false;
+      button.textContent = 'Zoek printers';
+      return;
+    }
+    const found = [];
+    const probe = async (host, port) => {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 900);
+      try {
+        const response = await fetch(`http://${host}:${port}/server/info`, { signal: controller.signal });
+        if (!response.ok) return;
+        const data = await response.json();
+        if (data?.result) found.push({ host, port, version: data.result.moonraker_version || '' });
+      } catch { /* A closed port or CORS response is simply not a discovery result. */ }
+      finally { clearTimeout(timer); }
+    };
+    await Promise.all(hosts.flatMap(host => ports.map(port => probe(host, port))));
+    const unique = [...new Map(found.map(item => [`${item.host}:${item.port}`, item])).values()];
+    if (!unique.length) {
+      const empty = document.createElement('p');
+      empty.textContent = demoMode ? 'Demomodus: lokale netwerkdetectie is uitgeschakeld.' : 'Geen bereikbare Moonraker gevonden. Controleer CORS en probeer het opnieuw.';
+      results.append(empty);
+    } else {
+      unique.forEach(item => {
+        const row = document.createElement('div');
+        row.className = 'discovery-result';
+        const text = document.createElement('div');
+        const title = document.createElement('strong');
+        title.textContent = discoveryName(item.version, item.port);
+        const endpoint = document.createElement('span');
+        endpoint.textContent = `http://${item.host}:${item.port}`;
+        text.append(title, endpoint);
+        const add = document.createElement('button');
+        add.type = 'button';
+        add.className = 'button button-primary';
+        add.textContent = 'Toevoegen';
+        add.addEventListener('click', () => addDiscoveredPrinter(item));
+        row.append(text, add);
+        results.append(row);
+      });
+    }
+    button.disabled = false;
+    button.textContent = 'Opnieuw zoeken';
+  }
+
+  function addDiscoveredPrinter(item) {
+    const current = settingsFromForm();
+    const exists = current.some(printer => printer.host === item.host && Number(printer.port) === item.port);
+    if (exists) {
+      saveNotice.textContent = `http://${item.host}:${item.port} staat al in de printerlijst.`;
+      return;
+    }
+    const printer = { id: newId(), name: discoveryName(item.version, item.port), host: item.host, port: item.port, color: '#4c325b' };
+    localStorage.setItem(CONFIG_KEY, JSON.stringify([...current, printer]));
+    renderSettings();
+    refreshMaintenanceStatuses();
+    saveNotice.textContent = `${printer.name} toegevoegd. Pas eventueel de naam en filamentkleur aan en sla op.`;
   }
 
   const maintenanceCommands = {
@@ -153,6 +292,7 @@
       prompt: 'De printer beweegt tijdens de bedmeting. Maak het printbed vrij en controleer de bewegingsruimte. Doorgaan?',
       script: 'BED_MESH_CALIBRATE'
     },
+    cool: { prompt: 'De nozzle en het printbed uitschakelen en laten afkoelen?', script: 'TURN_OFF_HEATERS' },
     'restart-klipper': { prompt: 'Klipper op deze printer herstarten?', script: 'RESTART' },
     'restart-firmware': { prompt: 'De printerfirmware op deze printer herstarten?', script: 'FIRMWARE_RESTART' }
   };
@@ -202,14 +342,16 @@
         const buttons = [...section.querySelectorAll('[data-maintenance-action]')];
         try {
           const endpoint = currentPrinterEndpoint(printer, section);
-          const data = await requestPrinterJson(`${endpoint}/printer/objects/query?print_stats=state&webhooks&extruder=temperature,target&heater_bed=temperature,target`);
+          const data = await requestPrinterJson(`${endpoint}/printer/objects/query?print_stats=state&webhooks=state&extruder=temperature,target&heater_bed=temperature,target`);
           const machine = data?.result?.status || {};
           const state = machine.print_stats?.state;
+          const klipperState = machine.webhooks?.state || 'unknown';
           if (!state) throw new Error('Geen printerstatus ontvangen.');
           section.querySelector('.admin-extruder-temp').textContent = `${formatTemperature(machine.extruder?.temperature)} / ${formatTemperature(machine.extruder?.target)}`;
           section.querySelector('.admin-bed-temp').textContent = `${formatTemperature(machine.heater_bed?.temperature)} / ${formatTemperature(machine.heater_bed?.target)}`;
-          status.textContent = state === 'printing' ? 'De printer is bezig. Onderhoudsacties zijn tijdelijk uitgeschakeld.' : `Status: ${state}`;
-          buttons.forEach(button => { button.disabled = state === 'printing' || maintenanceBusy.has(printer.id); });
+          status.textContent = `Klipper: ${klipperState} · Print: ${state}`;
+          const hot = Number(machine.extruder?.temperature) > 35 || Number(machine.extruder?.target) > 0 || Number(machine.heater_bed?.temperature) > 35 || Number(machine.heater_bed?.target) > 0;
+          buttons.forEach(button => { const restart = button.dataset.maintenanceAction.startsWith('restart-'); button.disabled = (!restart && klipperState !== 'ready') || state === 'printing' || maintenanceBusy.has(printer.id) || (button.dataset.maintenanceAction === 'cool' && !hot); });
         } catch (error) {
           status.textContent = `${printer.name} is niet bereikbaar: ${error.message}`;
           buttons.forEach(button => { button.disabled = true; });
@@ -293,6 +435,9 @@
     saveNotice.textContent = 'Printer toegevoegd. Pas de gegevens aan en sla de wijzigingen op.';
   });
 
+  document.getElementById('discoverPrinters').addEventListener('click', discoverMoonrakers);
+  document.getElementById('resetHistory').addEventListener('click', resetHistory);
+
   document.getElementById('printerSettings').addEventListener('input', event => {
     const section = event.target.closest('.admin-printer');
     if (!section) return;
@@ -300,7 +445,7 @@
       const name = event.target.value.trim() || 'Nieuwe printer';
       section.querySelector('.admin-printer-heading h3').textContent = name;
       section.querySelector('.button-delete').setAttribute('aria-label', `Verwijder ${name}`);
-      section.querySelector('.color-input').setAttribute('aria-label', `Randkleur voor ${name}`);
+      section.querySelector('.color-input').setAttribute('aria-label', `Filamentkleur voor ${name}`);
     }
     if (event.target.matches('.color-input')) section.style.setProperty('--printer-color', event.target.value);
   });
