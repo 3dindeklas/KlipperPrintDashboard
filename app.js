@@ -49,8 +49,17 @@
       name: typeof item.name === 'string' && item.name.trim() ? item.name.trim() : (printerDefinitions.find(printer => printer.id === item.id)?.name || `Printer ${index + 1}`),
       host: validHost(item.host) ? item.host : (window.location.hostname || 'localhost'),
       port: legacyPorts.includes(Number(item.port)) && Number(item.port) === legacyPorts[index] ? [8401, 8301, 8201, 8101][index] : (validPort(item.port) ? Number(item.port) : (printerDefinitions.find(printer => printer.id === item.id)?.port || [8401, 8301, 8201, 8101][index] || 8401)),
-      color: /^#[\da-f]{6}$/i.test(item.color || '') ? item.color : (printerDefinitions.find(printer => printer.id === item.id)?.color || '#4c325b')
+      color: /^#[\da-f]{6}$/i.test(item.color || '') ? item.color : (printerDefinitions.find(printer => printer.id === item.id)?.color || '#4c325b'),
+      colorSecondary: /^#[\da-f]{6}$/i.test(item.colorSecondary || '') ? item.colorSecondary : (item.color || '#4c325b'),
+      colorMode: item.colorMode === 'duo' ? 'duo' : 'single'
     }));
+  }
+
+  function printerGradient(printer) {
+    if (printer.colorMode === 'duo' && /^#[\da-f]{6}$/i.test(printer.colorSecondary || '')) {
+      return `linear-gradient(135deg, ${printer.color}, ${printer.colorSecondary})`;
+    }
+    return printer.color;
   }
 
   function readLocalPrinters() {
@@ -135,6 +144,7 @@
     const card = document.createElement('article');
     card.className = 'printer-card';
     card.style.setProperty('--printer-color', printer.color);
+    card.style.setProperty('--printer-gradient', printerGradient(printer));
     card.innerHTML = `<div class="printer-top"><h2 class="printer-name"></h2></div><p class="printer-state"><span class="state-dot" aria-hidden="true"></span><span class="state-label">Status ophalen…</span></p><div class="progress-track" hidden><div class="progress-bar"></div></div><p class="printer-detail"></p><div class="printer-telemetry"><div class="telemetry-row"><img src="icons/extruder.svg" alt=""><span>Nozzle</span><strong class="extruder-temp">— / — °C</strong></div><div class="telemetry-row"><img src="icons/heated-bed.svg" alt=""><span>Printbed</span><strong class="bed-temp">— / — °C</strong></div></div><div class="printer-job" hidden><span class="job-filename"></span><strong class="job-eta"></strong></div><button class="button button-primary" type="button" disabled>Print mijn letter</button>`;
     card.querySelector('.printer-name').textContent = printer.name;
     card.querySelector('button').addEventListener('click', () => openLetterPicker(printer));
