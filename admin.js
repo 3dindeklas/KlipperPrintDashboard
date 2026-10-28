@@ -113,13 +113,26 @@
 
   async function initializeAuth() {
     if (demoMode) {
+      if (sessionStorage.getItem(SESSION_KEY) === 'yes') {
+        await unlock();
+        return;
+      }
       isFirstRun = !localStorage.getItem(PIN_KEY);
       applyAuthMode();
       return;
     }
     try {
-      const response = await fetch(AUTH_API, { headers: { Accept: 'application/json' } });
+      const headers = { Accept: 'application/json' };
+      if (authToken) headers.Authorization = `Bearer ${authToken}`;
+      const response = await fetch(AUTH_API, { headers });
       const data = await response.json();
+      if (authToken && data.authorized) {
+        await unlock();
+        return;
+      }
+      sessionStorage.removeItem(SESSION_KEY);
+      sessionStorage.removeItem(SESSION_TOKEN_KEY);
+      authToken = '';
       isFirstRun = !data.configured;
       applyAuthMode();
     } catch {
@@ -131,7 +144,6 @@
   }
 
   function applyAuthMode() {
-    isFirstRun = !localStorage.getItem(PIN_KEY);
     document.getElementById('authTitle').textContent = isFirstRun ? 'Beheercode instellen' : 'Beheer openen';
     document.getElementById('authDescription').textContent = isFirstRun
       ? 'Stel een code van 4 tot 8 cijfers in voordat je de printerinstellingen wijzigt.'
@@ -607,6 +619,5 @@
   const dashboardLink = document.querySelector('.header-link');
   if (dashboardLink) dashboardLink.href = `index.html${demoQuery}`;
 
-  if (sessionStorage.getItem(SESSION_KEY) === 'yes' && (demoMode || authToken)) unlock();
-  else initializeAuth();
+  initializeAuth();
 })();
