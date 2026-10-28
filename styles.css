@@ -23,7 +23,7 @@
 }
 
 * { box-sizing: border-box; }
-body { margin: 0; min-height: 100vh; padding: max(14px, env(safe-area-inset-top)) 14px max(22px, env(safe-area-inset-bottom)); }
+body { margin: 0; min-height: 100vh; padding: 0 14px max(22px, env(safe-area-inset-bottom)); }
 button, input { font: inherit; }
 button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
 button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid #174d49; outline-offset: 3px; }
@@ -136,6 +136,9 @@ dialog { color: var(--ink); font: inherit; }
 .button-warning { background: #fff0d0; color: #624713; }
 .button-danger { background: #f9e6e4; color: #853b32; }
 .admin-panel { padding: clamp(18px, 4vw, 28px); }
+.admin-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 10px; }
+.admin-toolbar h2 { margin-bottom: 0; }
+.admin-toolbar .button { min-height: 44px; padding: 9px 14px; font-size: .86rem; }
 .admin-printer { padding: 18px; margin: 14px 0; border: 2px solid var(--printer-color); border-radius: 14px; background: #fff; }
 .admin-printer-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
 .admin-printer-heading h3 { margin: 0; color: var(--plum-dark); font-size: 1.15rem; }
