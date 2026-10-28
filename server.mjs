@@ -58,7 +58,8 @@ function sanitizePrinters(printers) {
     port: Number(printer?.port),
     color: /^#[\da-f]{6}$/i.test(String(printer?.color || '')) ? String(printer.color) : '#4c325b',
     colorSecondary: /^#[\da-f]{6}$/i.test(String(printer?.colorSecondary || '')) ? String(printer.colorSecondary) : (String(printer?.color || '') || '#4c325b'),
-    colorMode: printer?.colorMode === 'duo' ? 'duo' : 'single'
+    colorMode: printer?.colorMode === 'duo' ? 'duo' : 'single',
+    visible: printer?.visible !== false
   })).filter(printer => printer.name && /^[a-zA-Z0-9.-]{1,253}$/.test(printer.host) && Number.isInteger(printer.port) && printer.port >= 1 && printer.port <= 65535);
 }
 
