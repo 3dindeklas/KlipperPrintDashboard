@@ -14,10 +14,10 @@
   const maintenanceBusy = new Set();
   let maintenancePolling = false;
   const definitions = [
-    { id: 'black', name: 'Zwart', host: window.location.hostname || 'localhost', port: 8401, color: '#252a29' },
-    { id: 'white', name: 'Wit', host: window.location.hostname || 'localhost', port: 8301, color: '#b9c2bd' },
-    { id: 'purple', name: 'Paars', host: window.location.hostname || 'localhost', port: 8201, color: '#7d4bb3' },
-    { id: 'printer4', name: 'Printer 4', host: window.location.hostname || 'localhost', port: 8101, color: '#5ab3b1' }
+    { id: 'black', name: 'Zwart', host: window.location.hostname || 'localhost', port: 8401, color: '#252a29', visible: true },
+    { id: 'white', name: 'Wit', host: window.location.hostname || 'localhost', port: 8301, color: '#b9c2bd', visible: true },
+    { id: 'purple', name: 'Paars', host: window.location.hostname || 'localhost', port: 8201, color: '#7d4bb3', visible: true },
+    { id: 'printer4', name: 'Printer 4', host: window.location.hostname || 'localhost', port: 8101, color: '#5ab3b1', visible: true }
   ];
   const standardPorts = [8401, 8301, 8201, 8101];
   const legacyPorts = [7125, 7126, 7127, 7128];
@@ -51,7 +51,8 @@
       port: legacyPorts.includes(Number(item.port)) && Number(item.port) === legacyPorts[index] ? standardPorts[index] : (Number(item.port) || definitions.find(definition => definition.id === item.id)?.port || standardPorts[index] || 8401),
       color: /^#[\da-f]{6}$/i.test(item.color || '') ? item.color : (definitions.find(definition => definition.id === item.id)?.color || '#4c325b'),
       colorSecondary: /^#[\da-f]{6}$/i.test(item.colorSecondary || '') ? item.colorSecondary : (item.color || '#4c325b'),
-      colorMode: item.colorMode === 'duo' ? 'duo' : 'single'
+      colorMode: item.colorMode === 'duo' ? 'duo' : 'single',
+      visible: item.visible !== false
     }));
   }
 
@@ -187,6 +188,30 @@
     return { wrapper, input };
   }
 
+  function createVisibilityField(printer) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'field visibility-field';
+    const label = document.createElement('span');
+    label.className = 'field-label';
+    label.textContent = 'Op dashboard';
+    const toggleLabel = document.createElement('label');
+    toggleLabel.className = 'switch';
+    const input = document.createElement('input');
+    input.type = 'checkbox';
+    input.className = 'visible-input';
+    input.checked = printer.visible !== false;
+    input.setAttribute('aria-label', `Toon ${printer.name} op het dashboard`);
+    const slider = document.createElement('span');
+    slider.className = 'switch-slider';
+    const state = document.createElement('span');
+    state.className = 'switch-state';
+    state.textContent = input.checked ? 'Zichtbaar' : 'Verborgen';
+    input.addEventListener('change', () => { state.textContent = input.checked ? 'Zichtbaar' : 'Verborgen'; });
+    toggleLabel.append(input, slider, state);
+    wrapper.append(label, toggleLabel);
+    return { wrapper, input };
+  }
+
   function createColorField(printer) {
     const wrapper = document.createElement('div');
     wrapper.className = 'field';
@@ -255,9 +280,10 @@
       const host = createField('IP-adres of netwerknaam', 'text', 'host-input', printer.host, { inputmode: 'url', autocomplete: 'off', placeholder: 'bijvoorbeeld 192.168.1.20', required: '' });
       const port = createField('Moonraker-poort', 'number', 'port-input', printer.port, { inputmode: 'numeric', min: '1', max: '65535', required: '' });
       const color = createColorField(printer);
+      const visibility = createVisibilityField(printer);
       const fields = document.createElement('div');
       fields.className = 'field-grid';
-      fields.append(name.wrapper, host.wrapper, port.wrapper, color.wrapper);
+      fields.append(name.wrapper, host.wrapper, port.wrapper, color.wrapper, visibility.wrapper);
       const maintenance = document.createElement('section');
       maintenance.className = 'maintenance-panel';
       maintenance.innerHTML = '<h3>Onderhoud en bediening</h3><div class="maintenance-telemetry"><div class="telemetry-row"><img src="icons/extruder.svg" alt=""><span>Nozzle</span><strong class="admin-extruder-temp">— / — °C</strong></div><div class="telemetry-row"><img src="icons/heated-bed.svg" alt=""><span>Printbed</span><strong class="admin-bed-temp">— / — °C</strong></div></div><p class="maintenance-status" role="status" aria-live="polite">Printerstatus ophalen…</p><div class="maintenance-actions"></div>';
@@ -422,7 +448,7 @@
       saveNotice.textContent = `http://${item.host}:${item.port} staat al in de printerlijst.`;
       return;
     }
-    const printer = { id: newId(), name: discoveryName(item.version, item.port), host: item.host, port: item.port, color: '#4c325b' };
+    const printer = { id: newId(), name: discoveryName(item.version, item.port), host: item.host, port: item.port, color: '#4c325b', colorSecondary: '#5ab3b1', colorMode: 'single', visible: true };
     printerSettings = [...current, printer];
     renderSettings();
     refreshMaintenanceStatuses();
@@ -642,7 +668,7 @@
         return;
       }
       if (!Number.isInteger(port) || port < 1 || port > 65535) { portInput.reportValidity(); return; }
-      values.push({ id, name, host, port, color: colorInput.value, colorSecondary: section.querySelector('.color-secondary-input').value, colorMode: section.querySelector('.color-mode-input').value });
+      values.push({ id, name, host, port, color: colorInput.value, colorSecondary: section.querySelector('.color-secondary-input').value, colorMode: section.querySelector('.color-mode-input').value, visible: section.querySelector('.visible-input').checked });
     }
     const saveButton = settingsForm.querySelector('button[type="submit"]');
     saveButton.disabled = true;
