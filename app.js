@@ -11,10 +11,10 @@
   const isGitHubPages = window.location.hostname.endsWith('.github.io');
   const demoMode = params.get('demo') === '1' || isGitHubPages;
   const printerDefinitions = [
-    { id: 'black', name: 'Zwart', port: 8401, color: '#252a29' },
-    { id: 'white', name: 'Wit', port: 8301, color: '#b9c2bd' },
-    { id: 'purple', name: 'Paars', port: 8201, color: '#7d4bb3' },
-    { id: 'printer4', name: 'Printer 4', port: 8101, color: '#5ab3b1' }
+    { id: 'black', name: 'Zwart', port: 8401, color: '#252a29', visible: true },
+    { id: 'white', name: 'Wit', port: 8301, color: '#b9c2bd', visible: true },
+    { id: 'purple', name: 'Paars', port: 8201, color: '#7d4bb3', visible: true },
+    { id: 'printer4', name: 'Printer 4', port: 8101, color: '#5ab3b1', visible: true }
   ];
   const fakePrinters = {
     black: { state: 'standby', extruder: 24, extruderTarget: 0, bed: 23, bedTarget: 0 },
@@ -51,7 +51,8 @@
       port: legacyPorts.includes(Number(item.port)) && Number(item.port) === legacyPorts[index] ? [8401, 8301, 8201, 8101][index] : (validPort(item.port) ? Number(item.port) : (printerDefinitions.find(printer => printer.id === item.id)?.port || [8401, 8301, 8201, 8101][index] || 8401)),
       color: /^#[\da-f]{6}$/i.test(item.color || '') ? item.color : (printerDefinitions.find(printer => printer.id === item.id)?.color || '#4c325b'),
       colorSecondary: /^#[\da-f]{6}$/i.test(item.colorSecondary || '') ? item.colorSecondary : (item.color || '#4c325b'),
-      colorMode: item.colorMode === 'duo' ? 'duo' : 'single'
+      colorMode: item.colorMode === 'duo' ? 'duo' : 'single',
+      visible: item.visible !== false
     }));
   }
 
@@ -153,9 +154,10 @@
   }
 
   function renderPrinters() {
+    const visiblePrinters = printers.filter(printer => printer.visible !== false);
     printerGrid.replaceChildren();
-    printers.forEach(createCard);
-    document.getElementById('noPrinters').hidden = printers.length > 0;
+    visiblePrinters.forEach(createCard);
+    document.getElementById('noPrinters').hidden = visiblePrinters.length > 0;
   }
 
   function stateLabel(state) {
@@ -268,7 +270,7 @@
   async function updateStatuses() {
     if (polling) return;
     polling = true;
-    try { await Promise.all(printers.map(updatePrinter)); }
+    try { await Promise.all(printers.filter(printer => printer.visible !== false).map(updatePrinter)); }
     finally { polling = false; }
   }
 
