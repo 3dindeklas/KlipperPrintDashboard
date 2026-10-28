@@ -40,6 +40,9 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid 
 .header-link { padding: 9px 13px; border: 1px solid #ffffff91; border-radius: 7px; color: #fff; font-size: .88rem; font-weight: 700; text-decoration: none; white-space: nowrap; }
 .header-link:hover { background: #ffffff1a; }
 .hero { padding: clamp(20px, 5vw, 34px); margin-bottom: 16px; text-align: center; background: linear-gradient(145deg, #fff 40%, #eee9f2 100%); }
+.intro-panel { display: grid; grid-template-columns: minmax(0, .95fr) minmax(0, 1.35fr); align-items: center; gap: clamp(20px, 4vw, 42px); padding: clamp(20px, 4vw, 34px); margin-bottom: 16px; background: linear-gradient(145deg, #fff 40%, #eee9f2 100%); }
+.intro-main { min-width: 0; text-align: center; }
+.intro-panel .steps { min-width: 0; padding: 0 0 0 clamp(18px, 4vw, 38px); margin: 0; border-left: 1px solid var(--line); }
 h1, h2, p { margin-top: 0; }
 h1 { margin-bottom: 8px; font-size: clamp(2rem, 6vw, 3rem); line-height: 1.05; }
 h2 { margin-bottom: 10px; font-size: clamp(1.25rem, 3vw, 1.6rem); }
@@ -47,7 +50,7 @@ h2 { margin-bottom: 10px; font-size: clamp(1.25rem, 3vw, 1.6rem); }
 .mode-badge { display: inline-flex; align-items: center; gap: 7px; margin-top: 14px; padding: 7px 11px; border-radius: 999px; background: var(--teal-light); color: #15534d; font-size: .85rem; font-weight: 700; }
 .mode-badge::before { width: 8px; height: 8px; border-radius: 50%; background: currentColor; content: ''; }
 .mode-badge.live { background: #fff1dc; color: #714c00; }
-.steps { padding: 18px 22px; margin-bottom: 16px; }
+.steps { padding: 0; margin: 0; }
 .steps h2 { margin: 0 0 14px; }
 .steps ol { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 0; padding: 0; list-style: none; }
 .steps li { display: flex; align-items: flex-start; gap: 10px; color: var(--muted); font-size: .9rem; line-height: 1.4; }
@@ -162,7 +165,12 @@ dialog { color: var(--ink); font: inherit; }
 
 @media (max-width: 620px) {
   .steps { padding: 16px; }
-  .steps ol { grid-template-columns: 1fr; gap: 10px; }
+  @media (max-width: 760px) {
+  .intro-panel { grid-template-columns: 1fr; gap: 18px; }
+  .intro-panel .steps { padding: 18px 0 0; border-top: 1px solid var(--line); border-left: 0; }
+}
+
+.steps ol { grid-template-columns: 1fr; gap: 10px; }
   .steps li { align-items: center; }
   .letter-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 7px; }
   .letter-preview { min-height: 140px; }
