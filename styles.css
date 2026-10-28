@@ -32,12 +32,18 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid 
 .site-header { position: sticky; top: 0; z-index: 5; width: 100vw; margin: 0 calc(50% - 50vw) 22px; background: var(--plum); color: #fff; box-shadow: 0 5px 18px #26192e1c; }
 .site-header::after { display: block; height: 4px; background: var(--yellow); content: ''; }
 @media screen and (orientation: landscape) and (min-width: 768px) and (max-width: 1366px) {
+  body { padding-bottom: max(8px, env(safe-area-inset-bottom)); }
   .site-header { padding-top: env(safe-area-inset-top); }
   .header-inner { min-height: 66px; gap: 12px; }
   .brand { flex-basis: 54px; height: 52px; padding-right: 8px; }
   .brand img { width: 44px; height: 52px; }
   .header-title span { font-size: .55rem; }
   .header-title strong { font-size: 1.05rem; }
+  .app-footer { padding: 8px 4px 0; font-size: .72rem; }
+  .footer-actions { gap: 8px; }
+  .refresh-button { width: 34px; height: 34px; border-radius: 9px; }
+  .refresh-button img { width: 15px; height: 15px; }
+  .app-footer a { font-size: .78rem; }
 }
 .header-inner { display: flex; width: min(100% - 32px, 1000px); min-height: 72px; align-items: center; gap: 14px; margin: 0 auto; }
 .brand { display: flex; flex: 0 0 60px; height: 58px; align-items: center; justify-content: center; padding-right: 10px; border-right: 1px solid #ffffff55; }
